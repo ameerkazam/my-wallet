@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مصاريفي Pro - النسخة المتطورة</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap');
+        
+        * { box-sizing: border-box; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        :root { 
+            --bg: #f0f2f5; 
+            --card-bg: #ffffff;
+            --input-bg: #f8fafc;
+            --input-text: #1e293b;
+            --text: #334155; 
+            --main-c1: #6366f1;
+            --main-c2: #8b5cf6;
+            --accent: #10b981;
+            --header-grad: linear-gradient(135deg, var(--main-c1), var(--main-c2)); 
+            --taskbar-grad: rgba(255, 255, 255, 0.8);
+            --border: #e2e8f0; 
+            --card-border-color: #f1f5f9;
+            --danger: #ef4444;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --acc-card-bg: #ffffff;
+        }
+
+        .dark-mode { 
+            --bg: #020617; 
+            --card-bg: #0f172a; 
+            --input-bg: #1e293b;
+            --input-text: #f8fafc;
+            --text: #cbd5e1; 
+            --border: #1e293b;
+            --card-border-color: #334155;
+            --header-grad: linear-gradient(135deg, #1e1b4b, #312e81); 
+            --taskbar-grad: rgba(2, 6, 23, 0.85); 
+            --acc-card-bg: #0f172a;
+            --main-c1: #818cf8;
+            --main-c2: #a78bfa;
+        }
+
+        [id^="items-"], 
+        #installmentsList, 
+        #goalSubBody, 
+        #fixedList, 
+        #debtEntries {
+            max-height: 250px; 
+            overflow-y: auto;
+            padding-left: 5px;
+            padding-right: 5px;
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--main-c1); border-radius: 10px; }
+
+        body { font-family: 'Tajawal', sans-serif; background: var(--bg); margin: 0; padding: 0; color: var(--text); display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .ghost-mode b, .ghost-mode #grandTotal, .ghost-mode #remainingBudget, .ghost-mode .expense-item b, .ghost-mode .goal-val { filter: blur(12px); pointer-events: none; }
+
+        .settled { opacity: 0.5; text-decoration: line-through; background: rgba(0,0,0,0.05); border-radius: 10px; }
+
+        /* تعديل تنبيه الديون ليكون صارخاً */
+        @keyframes pulse-red-strong {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); background: rgba(239, 68, 68, 0.1); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); background: rgba(239, 68, 68, 0.2); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); background: rgba(239, 68, 68, 0.1); }
+        }
+        .debt-alert { 
+            animation: pulse-red-strong 1.5s infinite; 
+            border: 2px solid var(--danger) !important; 
+            font-weight: bold;
+        }
+
+        #lockScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--header-grad); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; text-align: center;
+        }
+
+        .taskbar { 
+            width: 100%; max-width: 450px; padding: 12px 20px; 
+            background: var(--taskbar-grad); 
+            backdrop-filter: blur(10px);
+            display: flex; justify-content: space-between; align-items: center;
+            position: sticky; top: 0; z-index: 1000;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-tool { 
+            background: var(--card-bg); color: var(--text); border: 1px solid var(--border);
+            border-radius: 12px; width: 42px; height: 42px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+            box-shadow: var(--card-shadow);
+        }
+        .nav-tool:hover { background: var(--main-c1); color: white; transform: translateY(-2px); }
+
+        .app-container { width: 100%; max-width: 450px; padding-bottom: 40px; display: none; }
+        .day-card { background: var(--card-bg); border-radius: 24px; margin: 15px; box-shadow: var(--card-shadow); overflow: hidden; border: 1px solid var(--card-border-color) !important; }
+        .day-header { padding: 20px 24px; display: flex; justify-content: space-between; cursor: pointer; font-weight: 700; color: white; background: var(--header-grad); }
+        .expense-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+        .btn-delete-fancy { background: #fee2e2; color: var(--danger); border: none; font-size: 16px; cursor: pointer; padding: 8px; border-radius: 10px; margin-right: 5px; }
+        .btn-delete-fancy:hover { background: var(--danger); color: white; }
+        
+        .brand-card { background: var(--header-grad); color: white; margin: 20px 15px; padding: 30px 25px; border-radius: 32px; text-align: center; box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3); }
+        .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 0 15px; }
+        .stat-card { background: var(--card-bg); padding: 18px 12px; border-radius: 24px; text-align: center; box-shadow: var(--card-shadow); border: 1px solid var(--border); cursor: pointer; }
+        .stat-card span { font-size: 13px; color: #64748b; font-weight: 600; }
+        .stat-card b { font-size: 18px; display: block; margin-top: 5px; }
+
+        .modal-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(8px); display:none; justify-content:center; align-items:center; z-index: 9999; }
+        
+        .modal-content { 
+            background:var(--card-bg); 
+            padding:35px; 
+            border-radius:32px; 
+            width:92%; 
+            max-width:400px; 
+            text-align:center; 
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        input, select { padding: 14px; border: 2px solid var(--border); border-radius: 14px; margin-bottom: 12px; width: 100%; text-align: center; font-family: 'Tajawal'; font-weight: 600; outline: none; background: var(--input-bg); color: var(--input-text); }
+        input:focus { border-color: var(--main-c1); background: #fff; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+        .dark-mode input:focus { background: var(--input-bg); border-color: var(--main-c1); }
+
+        .btn-add-pro { padding: 14px 30px; background: var(--main-c1); color: white; border: none; border-radius: 16px; font-weight: 800; cursor: pointer; margin: 10px auto; display: block; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.4); }
+        .btn-add-pro:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.4); }
+
+        .cat-btn { 
+            border: 1px solid var(--border); 
+            background: var(--card-bg); 
+            border-radius: 12px; 
+            padding: 10px 18px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 700; 
+            white-space: nowrap; 
+            color: var(--text);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .cat-btn:hover { background: var(--main-c1); color: white; border-color: var(--main-c1); }
+
+        .toggle-card { background: var(--bg); border-radius: 18px; margin-top: 12px; overflow: hidden; border: 1px solid var(--border); }
+        .toggle-header { padding: 15px; cursor: pointer; font-weight: 700; display: flex; justify-content: space-between; background: var(--input-bg); color: var(--text); }
+        .toggle-body { padding: 18px; display: none; background: var(--card-bg); }
+
+        .accumulated-card { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 24px; 
+            text-align: center; 
+            border: 2px dashed var(--main-c1);
+            margin: 15px;
+        }
+
+        .ai-banner { font-size: 13px; font-weight: 600; padding: 12px; border-radius: 16px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.15); }
+        
+        .btn-mini-plus {
+            background: var(--accent); color: white; border: none; border-radius: 12px;
+            width: 45px; height: 45px; font-size: 20px; cursor: pointer;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
+        }
+        
+        /* أيقونة الآلة الحاسبة */
+        .calc-icon {
+            position: absolute;
+            left: 10px;
+            top: 15px;
+            font-size: 14px;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body onload="initLock()">
+
+<div id="lockScreen" class="animate__animated animate__fadeIn">
+    <div style="background: rgba(255,255,255,0.2); padding: 30px; border-radius: 50%; margin-bottom: 20px;">
+        <h1 id="lockLogo" style="font-size: 60px; margin:0;">💎</h1>
+    </div>
+    <h2 id="lockName" style="font-weight: 800; letter-spacing: 1px;">مصاريفي PRO</h2>
+    <p style="opacity: 0.8; font-size: 14px; margin-bottom: 25px;">أدخل رمز الدخول للمتابعة</p>
+    <input type="password" id="pinInput" placeholder="****" style="width: 150px; font-size: 28px; letter-spacing: 8px; border:none; background: rgba(255,255,255,0.9);" maxlength="4">
+    <button onclick="unlockApp()" class="btn-add-pro" style="background: #fff; color: var(--main-c1); width: 150px; font-size: 18px;">دخول</button>
+</div>
+
+<div class="taskbar">
+    <button onclick="toggleTheme()" class="nav-tool">🌙</button>
+    <div style="font-weight: 900; color: var(--main-c1); font-size: 18px;">المحفظة</div>
+    <div style="display:flex; gap:10px;">
+        <button onclick="toggleGhostMode()" class="nav-tool">👁️</button>
+        <button onclick="toggleSearch()" class="nav-tool">🔍</button>
+        <button onclick="openSettings()" class="nav-tool">⚙️</button>
+    </div>
+</div>
+
+<div class="app-container animate__animated animate__fadeIn" id="captureArea">
+    <div class="brand-card animate__animated animate__slideInDown">
+        <h2 onclick="editBrandName()" style="margin:0; font-weight: 900; font-size: 28px; cursor: pointer;">
+             <span id="appLogo">💎</span> <span id="appNameDisplay">مصاريفي Pro</span>
+        </h2>
+        <div style="background: rgba(255,255,255,0.12); margin-top: 25px; padding: 20px; border-radius: 24px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+                <span style="font-size:13px; font-weight: 700; opacity: 0.9;">حالة الميزانية</span>
+                <span id="savingStatus" style="font-size:12px; background:rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 8px;">٠٪</span>
+            </div>
+            <div style="height:12px; background:rgba(255,255,255,0.2); border-radius:10px; margin: 10px 0;"><div id="barFill" style="height:100%; background:#fff; width:0%; border-radius:10px; box-shadow: 0 0 10px #fff;"></div></div>
+            <div style="display:flex; justify-content:space-between; font-size:14px; font-weight: 800;"><span id="remainingBudget">المتبقي: ٠</span></div>
+            <div id="dailyAdvice" class="ai-banner" style="background: rgba(0,0,0,0.15); border:none; text-align: right;">جاري الحساب...</div>
+            <div id="aiAnalysis" class="ai-banner"></div>
+            <div id="instReminder" style="background:#fef08a; color:#854d0e; padding:10px; border-radius:12px; margin-top:10px; font-size:12px; font-weight:bold; display:none;"></div>
+        </div>
+    </div>
+
+    <div class="day-card" style="padding: 20px;">
+        <div style="font-weight: 800; margin-bottom: 15px; color: var(--main-c1); display: flex; align-items: center; gap: 8px;">
+            <span>📊 التحليل البياني</span>
+        </div>
+        <canvas id="weeklyChart" style="max-height: 180px;"></canvas>
+        <hr style="border: 0.5px solid var(--border); margin: 20px 0;">
+        <div style="height: 200px;">
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+
+    <div id="searchBar" style="padding:0 20px; display:none; margin-bottom:10px;"><input type="text" id="globalSearch" placeholder="🔍 ابحث في المصاريف..." oninput="updateUI()"></div>
+
+    <div class="stat-grid">
+        <div class="stat-card"><span>أعلى يوم صرف</span><b id="topDay" style="color:var(--main-c1)">---</b></div>
+        <div class="stat-card"><span>المعدل اليومي</span><b id="avgSpend">٠</b></div>
+        <div class="stat-card" onclick="openDebtModal('debt')"><span>ديون بذمتك 🧾</span><b id="debtVal" style="color:var(--danger)">٠</b></div>
+        <div class="stat-card" onclick="openDebtModal('credit')"><span>ديون تطلبها 💸</span><b id="creditVal" style="color:var(--accent)">٠</b></div>
+    </div>
+
+    <div class="day-card">
+        <div class="day-header" onclick="toggleSection('allDaysSectionBody')">
+            <span>📝 سجل مصاريف الأيام ▾</span>
+            <small style="font-size: 11px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 8px;">إدخال جديد</small>
+        </div>
+        <div id="allDaysSectionBody" style="display:none; padding:10px;" class="animate__animated animate__fadeIn">
+            <div id="daysList"></div> </div>
+    </div>
+
+    <div class="day-card" style="border: 2px solid var(--main-c1) !important;">
+        <div class="day-header" style="background: var(--header-grad);" onclick="toggleSection('financialCenterBody')">
+            <span>💰 المركز المالي والادخار ▾</span>
+        </div>
+        <div id="financialCenterBody" style="display:none; padding:15px;" class="animate__animated animate__fadeIn">
+            
+            <div class="toggle-card">
+                <div class="toggle-header" onclick="toggleElement('instSubBody')">📅 الأقساط المجدولة <span>▾</span></div>
+                <div id="instSubBody" class="toggle-body">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
+                        <input type="text" id="instDesc" placeholder="اسم القسط">
+                        <input type="text" id="instAmt" placeholder="المبلغ (يمكنك كتابة 1+1)">
+                        <input type="number" id="instDay" placeholder="يوم الدفع (1-31)">
+                        <input type="number" id="instMonths" placeholder="الأشهر المتبقية">
+                    </div>
+                    <button onclick="addInstallment()" class="btn-add-pro" style="width:100%; margin-top:5px;">تثبيت القسط</button>
+                    <div id="installmentsList"></div>
+                </div>
+            </div>
+
+            <div class="toggle-card">
+                <div class="toggle-header" onclick="toggleElement('goalSubBody')">🎯 أهداف الادخار <span>▾</span></div>
+                <div id="goalSubBody" class="toggle-body">
+                    <div id="goalProgressArea">
+                        <div id="goalEmptyState" style="text-align:center; padding: 20px; opacity:0.6;">لا توجد أهداف نشطة</div>
+                        <div id="goalActiveState" style="display:none;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                                <b id="activeGoalName" style="color:var(--main-c1); font-size:18px;">---</b>
+                                <span id="activeGoalPercent" style="background:var(--accent); color:white; padding:2px 10px; border-radius:20px; font-size:12px;">0%</span>
+                            </div>
+                            <div style="height:14px; background:#e2e8f0; border-radius:10px; margin-bottom:15px; overflow:hidden;">
+                                <div id="goalFill" style="height:100%; background:linear-gradient(to left, var(--accent), #34d399); width:0%;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:15px; font-weight:700;">
+                                <span>المجموع: <b class="goal-val" id="goalCurrent">0</b></span>
+                                <span>الهدف: <b class="goal-val" id="goalTarget">0</b></span>
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr auto; gap:10px; align-items: center;">
+                                <input type="text" id="addGoalAmt" placeholder="أضف مبلغ (يمكنك كتابة 1+1)" style="margin:0;">
+                                <button onclick="addToGoal()" class="btn-mini-plus">➕</button>
+                            </div>
+                            <button onclick="resetGoal()" style="background:none; border:none; color:var(--danger); font-size:12px; width:100%; cursor:pointer; margin-top:15px; font-weight:700;">❌ إلغاء هذا الهدف</button>
+                        </div>
+                    </div>
+                    <button id="btnNewGoal" onclick="document.getElementById('newGoalModal').style.display='flex'" class="btn-add-pro" style="width:100%; background: var(--accent);">+ إنشاء هدف جديد</button>
+                </div>
+            </div>
+
+            <div class="toggle-card">
+                <div class="toggle-header" onclick="toggleElement('safeSubBody')">🔒 الخزنة (مصاريف ثابتة) <span>▾</span></div>
+                <div id="safeSubBody" class="toggle-body">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                        <input type="text" id="fixedDesc" placeholder="مثلاً: إيجار">
+                        <input type="text" id="fixedAmt" placeholder="المبلغ">
+                    </div>
+                    <button onclick="addFixedExpense()" class="btn-add-pro" style="width:100%; background: #475569;">إضافة للخزنة</button>
+                    <div id="fixedList" style="margin-top:15px;"></div>
+                </div>
+            </div>
+
+            <div class="toggle-card" id="debtDetailsContainer" style="display:none;">
+                <div class="toggle-header" onclick="toggleElement('debtSubBody')">📋 تفاصيل الديون والديانة <span>▾</span></div>
+                <div id="debtSubBody" class="toggle-body">
+                    <div id="debtEntries"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="accumulated-card">
+        <span style="color: #64748b; font-size: 13px; font-weight: 700; display: block; margin-bottom: 5px;">إجمالي المصاريف التراكمي</span>
+        <div id="accumulatedTotal" style="font-size:26px; font-weight: 900; color: var(--main-c1);">٠ د.ع</div>
+    </div>
+
+    <div style="margin: 20px 15px; background:var(--header-grad); color:white; padding:25px; border-radius:32px; text-align:center;">
+        <span style="opacity: 0.8; font-size: 14px; font-weight: 600;">إجمالي مصاريف الأسبوع</span>
+        <div id="grandTotal" style="font-size:32px; font-weight: 900; margin-top: 5px;">٠ د.ع</div>
+    </div>
+</div>
+
+<div id="settingsModal" class="modal-overlay">
+    <div class="modal-content animate__animated animate__zoomIn" style="max-height: 85vh; overflow-y: auto;">
+        <h3 style="color:var(--main-c1); margin-top:0;">⚙️ الإعدادات المتقدمة</h3>
+        <p style="font-size: 14px; font-weight: 700; margin-bottom:10px;">💰 الميزانية الشهرية</p>
+        <input type="number" id="budgetLimit" placeholder="حدد ميزانيتك الكلية" oninput="updateUI()">
+        
+        <div class="toggle-card" style="text-align: right;">
+            <div class="toggle-header" onclick="toggleElement('toolsBody')">🛠️ أدوات التحكم والتخصيص <span>▾</span></div>
+            <div id="toolsBody" class="toggle-body">
+                <p style="font-size: 13px; font-weight: bold; margin-bottom:15px;">🎨 ثيمات الألوان</p>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#6366f1; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#6366f1', '#8b5cf6')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#10b981; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#10b981', '#059669')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#f59e0b; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#f59e0b', '#d97706')"></div>
+                    
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#ef4444; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#ef4444', '#b91c1c')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#06b6d4; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#06b6d4', '#0891b2')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#ec4899; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#ec4899', '#be185d')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#334155; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#334155', '#1e293b')"></div>
+                    <div style="width:100%; aspect-ratio:1; border-radius:15px; cursor:pointer; background:#8b5cf6; border:3px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);" onclick="applyColor('#8b5cf6', '#6d28d9')"></div>
+                </div>
+                <button onclick="openPinModal()" class="btn-add-pro" style="width:100%; background:#f59e0b; margin-bottom:10px;">🔐 تغيير الرمز</button>
+                <button onclick="exportAsImage()" class="btn-add-pro" style="width:100%;background:#3b82f6">📸 تصدير صورة</button>
+                <button onclick="backupData()" class="btn-add-pro" style="width:100%;background:#10b981">📥 حفظ نسخة احتياطية</button>
+                <button onclick="document.getElementById('fileInput').click()" class="btn-add-pro" style="width:100%;background:#818cf8">📤 استيراد نسخة</button>
+                <input type="file" id="fileInput" style="display:none" onchange="restoreData(event)">
+                <button onclick="resetWeek()" class="btn-add-pro" style="width:100%;background:#ef4444">🛑 تصفير الأسبوع</button>
+            </div>
+        </div>
+        <button onclick="closeSettings()" class="btn-add-pro" style="width:100%;background:#94a3b8; margin-top:20px;">إغلاق</button>
+    </div>
+</div>
+
+<div id="newGoalModal" class="modal-overlay"><div class="modal-content animate__animated animate__zoomIn"><h3>🎯 هدف ادخار جديد</h3><input type="text" id="newGoalName" placeholder="ماذا تريد أن تشتري؟"><input type="text" id="newGoalTarget" placeholder="المبلغ المطلوب"><button onclick="saveNewGoal()" class="btn-add-pro">بدء الادخار</button><button onclick="document.getElementById('newGoalModal').style.display='none'" class="btn-add-pro" style="background:#94a3b8">إلغاء</button></div></div>
+<div id="pinModal" class="modal-overlay"><div class="modal-content animate__animated animate__zoomIn"><h3>🔐 الرمز الجديد</h3><input type="password" id="newPinInput" maxlength="4" placeholder="****"><button onclick="saveNewPin()" class="btn-add-pro">حفظ</button><button onclick="document.getElementById('pinModal').style.display='none'" class="btn-add-pro" style="background:#94a3b8">إلغاء</button></div></div>
+<div id="debtModal" class="modal-overlay"><div class="modal-content animate__animated animate__zoomIn"><h3 id="debtTitle">سجل دين</h3><input type="text" id="debtName" placeholder="الاسم"><div style="position:relative;"><input type="text" id="debtAmount" placeholder="المبلغ"><span class="calc-icon">🖩</span></div><button onclick="saveDebtRecord()" class="btn-add-pro">إضافة</button><button onclick="closeDebtModal()" class="btn-add-pro" style="background:#94a3b8">إلغاء</button></div></div>
+<div id="editBrandModal" class="modal-overlay"><div class="modal-content animate__animated animate__zoomIn"><h3>🎨 تخصيص الهوية</h3><input type="text" id="newNameInput" placeholder="اسم التطبيق الجديد"><input type="text" id="newLogoInput" placeholder="أيقونة (إيموجي)"><button onclick="saveBrand()" class="btn-add-pro">حفظ التغييرات</button><button onclick="closeEditBrandModal()" class="btn-add-pro" style="background:#94a3b8">إلغاء</button></div></div>
+
+<script>
+    const days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+    let currentDebtMode = '';
+    let myChart;
+    let myCatChart; 
+
+    const autoIcons = {
+        'طعام': '🍴', 'اكل': '🍴', 'غداء': '🍴', 'عشاء': '🍴', 'ريوق': '🍴',
+        'نقل': '🚗', 'تكسي': '🚗', 'بنزين': '🚗', 'سيارة': '🚗',
+        'تسوق': '🛒', 'مسواك': '🛒', 'سوبرماركت': '🛒',
+        'رصيد': '📱', 'نت': '📱', 'انترنت': '📱', 'كارت': '📱',
+        'منزل': '🏠', 'بيت': '🏠', 'ايجار': '🏠',
+        'كوفي': '☕', 'قهوة': '☕', 'شاي': '☕',
+        'صحة': '💊', 'دواء': '💊', 'مستشفى': '💊',
+        'هدايا': '🎁', 'هدية': '🎁'
+    };
+
+    // وظيفة الآلة الحاسبة الذكية
+    function safeEval(val) {
+        try {
+            // تنظيف النص من أي رموز غير حسابية والسماح فقط بـ ( + - * / )
+            const cleanVal = String(val).replace(/[^-+*/0-9.]/g, '');
+            return Function(`'use strict'; return (${cleanVal})`)() || 0;
+        } catch (e) {
+            return parseFloat(val) || 0;
+        }
+    }
+
+    // وظيفة الوضع الليلي التلقائي
+    function autoDarkCheck() {
+        const hour = new Date().getHours();
+        const isNight = hour >= 19 || hour <= 7; // من 7 مساءً لـ 7 صباحاً
+        if (isNight && !document.body.classList.contains('dark-mode')) {
+            document.body.classList.add('dark-mode');
+        }
+    }
+
+    // نظام التنبيهات
+    function setupNotifications() {
+        if ("Notification" in window) {
+            Notification.requestPermission();
+        }
+    }
+
+    function checkReminder() {
+        const now = new Date();
+        if (now.getHours() === 21 && now.getMinutes() === 0) { // تذكير الساعة 9 مساءً
+            if (Notification.permission === "granted") {
+                new Notification("💎 تذكير مصاريفي PRO", {
+                    body: "لا تنسَ تسجيل مصاريف اليوم للحفاظ على دقة ميزانيتك!",
+                    icon: "https://cdn-icons-png.flaticon.com/512/2454/2454282.png"
+                });
+            }
+        }
+    }
+
+    function initLock() {
+        if(!localStorage.getItem('appPin')) localStorage.setItem('appPin', '0000');
+        document.getElementById('appNameDisplay').innerText = localStorage.getItem('customAppName') || "مصاريفي Pro";
+        document.getElementById('appLogo').innerText = localStorage.getItem('customAppLogo') || "💎";
+        document.getElementById('budgetLimit').value = localStorage.getItem('myBudget') || 0;
+        
+        // تفعيل الوضع الليلي التلقائي
+        autoDarkCheck();
+        if(localStorage.getItem('theme') === 'dark') document.body.classList.add('dark-mode');
+        
+        applyColor(localStorage.getItem('userC1') || '#6366f1', localStorage.getItem('userC2') || '#8b5cf6');
+        processInstallments();
+        setupNotifications();
+        setInterval(checkReminder, 60000); // فحص التنبيه كل دقيقة
+        updateUI();
+    }
+
+    function unlockApp() {
+        if(document.getElementById('pinInput').value === localStorage.getItem('appPin')) {
+            document.getElementById('lockScreen').style.display = 'none';
+            document.querySelector('.app-container').style.display = 'block';
+            checkLock();
+            updateChart();
+        } else { alert("رمز الدخول غير صحيح!"); }
+    }
+
+    function toggleSection(id) { 
+        const el = document.getElementById(id); 
+        el.style.display = (el.style.display === 'none') ? 'block' : 'none'; 
+    }
+    
+    function toggleElement(id) { 
+        const el = document.getElementById(id); 
+        el.style.display = (el.style.display === 'block') ? 'none' : 'block'; 
+        if(el.style.display === 'block') el.classList.add('animate__animated', 'animate__fadeInDown', 'animate__faster');
+    }
+
+    function toAr(n) { return (n || 0).toLocaleString('ar-EG') + " د.ع"; }
+
+    function addInstallment() {
+        const desc = document.getElementById('instDesc').value, 
+              amtVal = document.getElementById('instAmt').value, 
+              day = parseInt(document.getElementById('instDay').value), 
+              months = parseInt(document.getElementById('instMonths').value);
+        
+        const amt = safeEval(amtVal);
+        if(!desc || !amt || !day || !months) { alert("يرجى ملء كافة حقول القسط"); return; }
+        
+        let insts = JSON.parse(localStorage.getItem('installments')) || [];
+        insts.push({ desc, amt, day, months, lastPaidMonth: -1 });
+        localStorage.setItem('installments', JSON.stringify(insts));
+        document.getElementById('instDesc').value = ''; document.getElementById('instAmt').value = ''; document.getElementById('instDay').value = ''; document.getElementById('instMonths').value = '';
+        updateUI();
+    }
+
+    function processInstallments() {
+        const now = new Date(), currentDay = now.getDate(), currentMonth = now.getMonth();
+        let insts = JSON.parse(localStorage.getItem('installments')) || [], updated = false;
+        insts.forEach(inst => {
+            if (currentDay >= inst.day && inst.lastPaidMonth !== currentMonth && inst.months > 0) {
+                const dayIdx = (now.getDay() + 1) % 7; 
+                let dayData = JSON.parse(localStorage.getItem(`dayData_${dayIdx}`)) || [];
+                dayData.push({ desc: `💳 قسط: ${inst.desc}`, amount: inst.amt });
+                localStorage.setItem(`dayData_${dayIdx}`, JSON.stringify(dayData));
+                inst.months -= 1; inst.lastPaidMonth = currentMonth;
+                updated = true;
+            }
+        });
+        if (updated) localStorage.setItem('installments', JSON.stringify(insts));
+    }
+
+    function deleteInstallment(idx) { if(confirm("حذف القسط؟")) { let insts = JSON.parse(localStorage.getItem('installments')); insts.splice(idx, 1); localStorage.setItem('installments', JSON.stringify(insts)); updateUI(); } }
+
+    function updateChart() {
+        const ctx = document.getElementById('weeklyChart').getContext('2d');
+        const dataSums = days.map((_, i) => { const data = JSON.parse(localStorage.getItem(`dayData_${i}`)) || []; return data.reduce((s, it) => s + it.amount, 0); });
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: days, datasets: [{ label: 'المصاريف', data: dataSums, backgroundColor: 'rgba(99, 102, 241, 0.6)', borderColor: '#6366f1', borderWidth: 2, borderRadius: 8 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, display: false }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    function handleAutoIcon(idx) {
+        const input = document.getElementById(`desc-${idx}`), val = input.value;
+        for (let key in autoIcons) { if (val.includes(key) && !val.includes(autoIcons[key])) { input.value = autoIcons[key] + " " + val; break; } }
+    }
+
+    function addFixedExpense() {
+        const desc = document.getElementById('fixedDesc').value, amtVal = document.getElementById('fixedAmt').value;
+        const amt = safeEval(amtVal);
+        if(!desc || !amt) return;
+        let fixed = JSON.parse(localStorage.getItem('fixedExpenses')) || [];
+        fixed.push({desc, amt});
+        localStorage.setItem('fixedExpenses', JSON.stringify(fixed));
+        document.getElementById('fixedDesc').value = ''; document.getElementById('fixedAmt').value = '';
+        updateUI();
+    }
+
+    function updateUI() {
+        let total = 0, maxV = 0, maxD = "---", daysWithExpenses = 0, cumulative = 0;
+        const search = document.getElementById('globalSearch').value.toLowerCase(), catTotals = {}; 
+        days.forEach((day, i) => {
+            const data = JSON.parse(localStorage.getItem(`dayData_${i}`)) || [];
+            let dSum = 0;
+            const cont = document.getElementById(`items-${i}`);
+            if(cont) {
+                cont.innerHTML = data.filter(it => it.desc.toLowerCase().includes(search)).map((it, j) => `
+                    <div class="expense-item animate__animated animate__fadeIn">
+                        <span onclick="editItem(${i}, ${j})" style="cursor:pointer; flex:1; font-weight:600;">${it.desc}</span>
+                        <div style="display:flex; align-items:center;">
+                            <b style="color:var(--main-c1);">${toAr(it.amount)}</b>
+                            <button onclick="deleteItem(${i}, ${j})" class="btn-delete-fancy">🗑️</button>
+                        </div>
+                    </div>`).join('');
+                data.forEach(it => { total += it.amount; dSum += it.amount; cumulative += it.amount;
+                    let cat = it.desc.split(' ')[0] || 'عام';
+                    catTotals[cat] = (catTotals[cat] || 0) + it.amount;
+                });
+                document.getElementById(`dayTotal-${i}`).innerText = toAr(dSum);
+                if(dSum > 0) daysWithExpenses++;
+                if(dSum > maxV) { maxV = dSum; maxD = day; }
+            }
+        });
+        
+        const instData = JSON.parse(localStorage.getItem('installments')) || [];
+        document.getElementById('installmentsList').innerHTML = instData.map((x, i) => `
+            <div class="animate__animated animate__fadeIn" style="background:var(--input-bg); padding:12px; border-radius:15px; margin-bottom:10px; border-right:4px solid var(--main-c2);">
+                <div style="display:flex; justify-content:space-between;"><b>${x.desc}</b><button onclick="deleteInstallment(${i})" style="background:none; border:none; color:red; cursor:pointer;">×</button></div>
+                <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:5px; color:#64748b;"><span>القسط: ${toAr(x.amt)}</span><span>يوم: ${x.day}</span><span>باقي: ${x.months} شهر</span></div>
+            </div>`).join('');
+
+        let fixedData = JSON.parse(localStorage.getItem('fixedExpenses')) || [];
+        total += fixedData.reduce((s, i) => s + i.amt, 0);
+        document.getElementById('fixedList').innerHTML = fixedData.map((x, i) => 
+            `<div class="animate__animated animate__fadeIn" style="display:flex; justify-content:space-between; padding:8px; border-bottom:1px solid var(--border)"><span>📌 ${x.desc}</span> <b>${toAr(x.amt)}</b>
+                <button onclick="if(confirm('حذف؟')){let f=JSON.parse(localStorage.getItem('fixedExpenses'));f.splice(${i},1);localStorage.setItem('fixedExpenses',JSON.stringify(f));updateUI();}" style="background:none;border:none;color:red;cursor:pointer;">×</button></div>`).join('');
+
+        document.getElementById('grandTotal').innerText = toAr(total);
+        document.getElementById('accumulatedTotal').innerText = toAr(cumulative);
+        document.getElementById('topDay').innerText = maxD;
+        document.getElementById('avgSpend').innerText = toAr(Math.round(total / (daysWithExpenses || 1)));
+        
+        const b = parseFloat(document.getElementById('budgetLimit').value) || 0;
+        localStorage.setItem('myBudget', b);
+        const pc = b > 0 ? (total/b)*100 : 0, fillEl = document.getElementById('barFill');
+        fillEl.style.width = Math.min(pc, 100) + "%";
+        if(pc >= 90) fillEl.style.background = "var(--danger)"; else if(pc >= 70) fillEl.style.background = "#f59e0b"; else fillEl.style.background = "#fff";
+        document.getElementById('savingStatus').innerText = Math.round(pc) + "%";
+        document.getElementById('remainingBudget').innerText = "المتبقي: " + toAr(b - total);
+        
+        const now = new Date(), lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(), daysLeft = lastDayOfMonth - now.getDate() + 1;
+        document.getElementById('dailyAdvice').innerText = `المصروف اليومي المقترح: ${toAr(Math.round(b > total ? (b - total) / daysLeft : 0))} (باقي ${daysLeft} يوم)`;
+        
+        const goalData = JSON.parse(localStorage.getItem('myGoal'));
+        if(goalData) {
+            document.getElementById('goalEmptyState').style.display = 'none'; document.getElementById('goalActiveState').style.display = 'block'; document.getElementById('btnNewGoal').style.display = 'none';
+            document.getElementById('activeGoalName').innerText = goalData.name; document.getElementById('goalTarget').innerText = toAr(goalData.target); document.getElementById('goalCurrent').innerText = toAr(goalData.current);
+            document.getElementById('goalFill').style.width = Math.min((goalData.current / goalData.target) * 100, 100) + "%";
+            document.getElementById('activeGoalPercent').innerText = Math.round((goalData.current / goalData.target) * 100) + "%";
+        } else { document.getElementById('goalEmptyState').style.display = 'block'; document.getElementById('goalActiveState').style.display = 'none'; document.getElementById('btnNewGoal').style.display = 'block'; }
+        
+        const debtData = JSON.parse(localStorage.getItem('debt_debt')) || [], creditData = JSON.parse(localStorage.getItem('debt_credit')) || [];
+        document.getElementById('debtVal').innerText = toAr(debtData.filter(x=>!x.settled).reduce((s,i)=>s+i.amount,0));
+        document.getElementById('creditVal').innerText = toAr(creditData.filter(x=>!x.settled).reduce((s,i)=>s+i.amount,0));
+        
+        const dEntries = document.getElementById('debtEntries'), oneWeek = 7 * 24 * 60 * 60 * 1000;
+        if(debtData.length || creditData.length) {
+            document.getElementById('debtDetailsContainer').style.display = 'block';
+            dEntries.innerHTML = [
+                ...debtData.map((x,idx)=>`<div class="expense-item animate__animated animate__fadeIn ${x.settled ? 'settled' : ''} ${(x.date && (new Date() - new Date(x.date)) > oneWeek && !x.settled) ? 'debt-alert' : ''}" style="color:var(--danger)"><span>${x.settled ? '✔️' : ''} عليك لـ ${x.name} <br><small style="font-size:10px; opacity:0.7">${x.date || ''}</small></span><div style="display:flex; align-items:center;"><b>${toAr(x.amount)}</b>${!x.settled ? `<button onclick="toggleSettle('debt', ${idx})" style="background:none; border:none; cursor:pointer; font-size:18px;">✅</button>` : ''}<button class="btn-delete-fancy" onclick="deleteDebt('debt',${idx})">🗑️</button></div></div>`),
+                ...creditData.map((x,idx)=>`<div class="expense-item animate__animated animate__fadeIn ${x.settled ? 'settled' : ''} ${(x.date && (new Date() - new Date(x.date)) > oneWeek && !x.settled) ? 'debt-alert' : ''}" style="color:var(--accent)"><span>${x.settled ? '✔️' : ''} لك عند ${x.name} <br><small style="font-size:10px; opacity:0.7">${x.date || ''}</small></span><div style="display:flex; align-items:center;"><b>${toAr(x.amount)}</b>${!x.settled ? `<button onclick="toggleSettle('credit', ${idx})" style="background:none; border:none; cursor:pointer; font-size:18px;">✅</button>` : ''}<button class="btn-delete-fancy" onclick="deleteDebt('credit',${idx})">🗑️</button></div></div>`)
+            ].join('');
+        } else { document.getElementById('debtDetailsContainer').style.display = 'none'; }
+        
+        if(typeof myChart !== 'undefined') updateChart();
+        const catCtx = document.getElementById('categoryChart').getContext('2d');
+        if (myCatChart) myCatChart.destroy();
+        myCatChart = new Chart(catCtx, {
+            type: 'doughnut', data: { labels: Object.keys(catTotals), datasets: [{ data: Object.values(catTotals), backgroundColor: ['#6366f1', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4'], borderWidth: 0, hoverOffset: 10 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: getComputedStyle(document.body).getPropertyValue('--text'), font: { family: 'Tajawal', weight: 'bold' } } } } }
+        });
+
+        let topCat = { name: '', amount: 0, pc: 0 };
+        for (let cat in catTotals) { if (catTotals[cat] > topCat.amount) topCat = { name: cat, amount: catTotals[cat], pc: (catTotals[cat] / total) * 100 }; }
+        document.getElementById('aiAnalysis').innerText = (total > 0 && topCat.amount > 0) ? (topCat.pc > 40 ? `💡 انتبه: فئة (${topCat.name}) تستهلك ${topCat.pc.toFixed(0)}% من ميزانيتك.` : `✅ توزيع ممتاز لمصاريفك اليوم.`) : "سجل مصاريفك بانتظام للحصول على نصائح.";
+    }
+
+    function saveNewGoal() { 
+        const name = document.getElementById('newGoalName').value, targetVal = document.getElementById('newGoalTarget').value; 
+        const target = safeEval(targetVal);
+        if(!name || !target) return; 
+        localStorage.setItem('myGoal', JSON.stringify({name, target, current: 0})); 
+        document.getElementById('newGoalModal').style.display = 'none'; 
+        updateUI(); 
+    }
+
+    function addToGoal() { 
+        const amtVal = document.getElementById('addGoalAmt').value; 
+        const amt = safeEval(amtVal);
+        if(!amt) return; 
+        let goal = JSON.parse(localStorage.getItem('myGoal')); 
+        goal.current += amt; 
+        localStorage.setItem('myGoal', JSON.stringify(goal)); 
+        document.getElementById('addGoalAmt').value = ''; 
+        updateUI(); 
+    }
+
+    function resetGoal() { if(confirm("حذف الهدف؟")) { localStorage.removeItem('myGoal'); updateUI(); } }
+    function toggleSettle(type, index) { let data = JSON.parse(localStorage.getItem('debt_' + type)); data[index].settled = true; localStorage.setItem('debt_' + type, JSON.stringify(data)); updateUI(); }
+    function deleteDebt(m, i) { let d = JSON.parse(localStorage.getItem('debt_'+m)); d.splice(i,1); localStorage.setItem('debt_'+m, JSON.stringify(d)); updateUI(); }
+    
+    function addItem(idx) { 
+        const amtVal = document.getElementById(`amt-${idx}`).value; 
+        const a = safeEval(amtVal);
+        if(!a) return; 
+        const d = JSON.parse(localStorage.getItem(`dayData_${idx}`)) || []; 
+        d.push({desc: document.getElementById(`desc-${idx}`).value || 'عام', amount: a}); 
+        localStorage.setItem(`dayData_${idx}`, JSON.stringify(d)); 
+        document.getElementById(`desc-${idx}`).value=''; 
+        document.getElementById(`amt-${idx}`).value=''; 
+        updateUI(); 
+    }
+
+    function deleteItem(d, i) { if(confirm("حذف المصروف؟")){ let data = JSON.parse(localStorage.getItem(`dayData_${d}`)); data.splice(i, 1); localStorage.setItem(`dayData_${d}`, JSON.stringify(data)); updateUI(); } }
+    
+    function editItem(dayIdx, itemIdx) { 
+        let data = JSON.parse(localStorage.getItem(`dayData_${dayIdx}`)), item = data[itemIdx]; 
+        let newDesc = prompt("تعديل الوصف:", item.desc), newAmtVal = prompt("تعديل المبلغ:", item.amount); 
+        const newAmt = safeEval(newAmtVal);
+        if (newDesc !== null && newAmt !== null) { 
+            data[itemIdx] = { desc: newDesc, amount: newAmt }; 
+            localStorage.setItem(`dayData_${dayIdx}`, JSON.stringify(data)); 
+            updateUI(); 
+        } 
+    }
+
+    function checkLock() {
+        document.getElementById('daysList').innerHTML = days.map((day, i) => `
+            <div class="day-card animate__animated animate__fadeInUp" style="margin: 8px 0; border-radius:18px;">
+                <div class="day-header" style="padding:15px; background:var(--bg); color:var(--text); border-bottom:1px solid var(--border);" onclick="toggleElement('day-body-${i}')">
+                    <span style="font-weight:700;">${day} ▾</span>
+                    <span id="dayTotal-${i}" style="color:var(--main-c1); font-weight:800;">٠</span>
+                </div>
+                <div id="day-body-${i}" style="display:none; padding:15px; background:var(--card-bg);">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                        <input type="text" id="desc-${i}" placeholder="وصف الصرف" oninput="handleAutoIcon(${i})">
+                        <div style="position:relative;">
+                            <input type="text" id="amt-${i}" placeholder="المبلغ">
+                            <span class="calc-icon">🖩</span>
+                        </div>
+                    </div>
+                    <div class="icon-bar" style="margin-bottom:12px; display:flex; flex-wrap:nowrap; overflow-x:auto; gap:8px; padding-bottom:5px; scrollbar-width: none;">
+                        <button class="cat-btn" onclick="setQuickCat(${i}, '🍴 طعام')">🍴 طعام</button>
+                        <button class="cat-btn" onclick="setQuickCat(${i}, '🛒 تسوق')">🛒 تسوق</button>
+                        <button class="cat-btn" onclick="setQuickCat(${i}, '🚗 نقل')">🚗 نقل</button>
+                        <button class="cat-btn" onclick="setQuickCat(${i}, '📱 رصيد')">📱 رصيد</button>
+                    </div>
+                    <button onclick="addItem(${i})" class="btn-add-pro" style="width:100%; margin:0;">+ إضافة المصروف</button>
+                    <div id="items-${i}" style="margin-top:15px;"></div> </div>
+            </div>`).join('');
+        updateUI();
+    }
+    
+    function setQuickCat(idx, cat) { document.getElementById(`desc-${idx}`).value = cat; }
+    function applyColor(c1, c2) { document.documentElement.style.setProperty('--main-c1', c1); document.documentElement.style.setProperty('--main-c2', c2); localStorage.setItem('userC1', c1); localStorage.setItem('userC2', c2); updateUI(); }
+    function toggleTheme() { document.body.classList.toggle('dark-mode'); localStorage.setItem('theme', document.body.classList.contains('dark-mode')?'dark':'light'); updateUI(); }
+    function toggleGhostMode() { document.body.classList.toggle('ghost-mode'); }
+    function toggleSearch() { const s = document.getElementById('searchBar'); s.style.display = (s.style.display === 'block') ? 'none' : 'block'; }
+    function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
+    function openPinModal() { document.getElementById('pinModal').style.display='flex'; }
+    function saveNewPin() { localStorage.setItem('appPin', document.getElementById('newPinInput').value); alert("تم حفظ الرمز الجديد!"); document.getElementById('pinModal').style.display='none'; }
+    function openDebtModal(m) { currentDebtMode = m; document.getElementById('debtModal').style.display='flex'; }
+    function closeDebtModal() { document.getElementById('debtModal').style.display='none'; }
+    
+    function saveDebtRecord() { 
+        const n = document.getElementById('debtName').value, amtVal = document.getElementById('debtAmount').value; 
+        const a = safeEval(amtVal);
+        if(!n || !a) return; 
+        let data = JSON.parse(localStorage.getItem('debt_'+currentDebtMode)) || []; 
+        data.push({name:n, amount:a, settled: false, date: new Date().toISOString().split('T')[0]}); 
+        localStorage.setItem('debt_'+currentDebtMode, JSON.stringify(data)); 
+        closeDebtModal(); 
+        updateUI(); 
+    }
+
+    function editBrandName() { document.getElementById('editBrandModal').style.display = 'flex'; }
+    function closeEditBrandModal() { document.getElementById('editBrandModal').style.display = 'none'; }
+    function saveBrand() { localStorage.setItem('customAppName', document.getElementById('newNameInput').value); localStorage.setItem('customAppLogo', document.getElementById('newLogoInput').value); location.reload(); }
+    function exportAsImage() { html2canvas(document.querySelector("#captureArea")).then(c => { const a = document.createElement('a'); a.download = 'مصاريفي.png'; a.href = c.toDataURL(); a.click(); }); }
+    function backupData() { let d = {}; for(let i=0; i<localStorage.length; i++) d[localStorage.key(i)] = localStorage.getItem(localStorage.key(i)); const b = new Blob([JSON.stringify(d)], {type:"application/json"}); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'backup.json'; a.click(); }
+    function restoreData(event) { const r = new FileReader(); r.onload = (x) => { const d = JSON.parse(x.target.result); localStorage.clear(); for(const k in d) localStorage.setItem(k, d[k]); location.reload(); }; r.readAsText(event.target.files[0]); }
+    function resetWeek() { if(confirm("هل أنت متأكد من تصفير الأسبوع؟ سيتم حذف كافة المصاريف.")) { days.forEach((_, i) => localStorage.removeItem(`dayData_${i}`)); localStorage.removeItem('fixedExpenses'); location.reload(); } }
+</script>
+</body>
+</html>
