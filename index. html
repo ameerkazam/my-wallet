@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title id="mainTitle">نظام الإدارة المتكامل 2026</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        /* تعريف الثيمات الجديدة */
+        :root { 
+            --p: #3b82f6; --s: #10b981; --d: #ef4444; --w: #f59e0b; 
+            --bg: #0f172a; --card: #1e293b; --text: #f1f5f9; --border: #334155; --inp-bg: #0f172a;
+            --glow: rgba(59, 130, 246, 0.5);
+        }
+        [data-theme="light"] {
+            --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --border: #e2e8f0; --inp-bg: #f8fafc;
+            --glow: rgba(59, 130, 246, 0.2);
+        }
+        [data-theme="midnight"] {
+            --bg: #020617; --card: #1e1b4b; --text: #e0e7ff; --border: #312e81; --inp-bg: #0f172a;
+            --p: #6366f1; --glow: rgba(99, 102, 241, 0.5);
+        }
+        [data-theme="royal"] {
+            --bg: #2e1065; --card: #4c1d95; --text: #f5f3ff; --border: #6d28d9; --inp-bg: #2e1065;
+            --p: #a855f7; --s: #22c55e; --glow: rgba(168, 85, 247, 0.5);
+        }
+        [data-theme="forest"] {
+            --bg: #064e3b; --card: #065f46; --text: #ecfdf5; --border: #047857; --inp-bg: #064e3b;
+            --p: #10b981; --s: #facc15; --glow: rgba(16, 185, 129, 0.5);
+        }
+
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; transition: background 0.3s, color 0.3s; }
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 0; 
+            padding-bottom: 140px; 
+            overflow-x: hidden;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" opacity="0.03"><text y="50" font-size="40">💼</text></svg>');
+        }
+
+        /* تنسيق الوصل المخفي للـ PDF */
+        #receiptTemplate {
+            display: none;
+            padding: 30px;
+            background: white;
+            color: #333;
+            width: 500px;
+            direction: rtl;
+        }
+        .receipt-header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 20px; }
+        .receipt-logo { width: 80px; height: 80px; margin-bottom: 10px; border-radius: 10px; }
+        .receipt-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #ccc; }
+        .receipt-footer { margin-top: 30px; text-align: center; font-size: 12px; color: #666; }
+
+        .announcement-bar {
+            background: linear-gradient(90deg, var(--p), var(--s));
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            display: none;
+            animation: slideDown 0.5s ease;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1400;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+
+        #editEmpModal { z-index: 3000 !important; }
+        #mgrModal { z-index: 2000 !important; }
+        #pinModal { z-index: 2500 !important; }
+        #empPinModal { z-index: 2800 !important; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--p); }
+
+        .brand-card {
+            background: linear-gradient(135deg, var(--p), #1d4ed8);
+            border-radius: 24px;
+            padding: 30px;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: 0 0 20px var(--glow), 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: slideDownFade 0.7s ease-out, glowPulse 3s infinite alternate;
+        }
+
+        @keyframes glowPulse {
+            from { box-shadow: 0 0 15px var(--glow), 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
+            to { box-shadow: 0 0 30px var(--glow), 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
+        }
+
+        .brand-card-logo {
+            width: 120px; 
+            height: 120px;
+            background: white;
+            border-radius: 20px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+            border: 3px solid rgba(255,255,255,0.3);
+        }
+
+        .brand-card-logo img { width: 100%; height: 100%; object-fit: cover; }
+        .brand-card-info { width: 100%; }
+        .brand-card-info h1 { white-space: nowrap; font-size: clamp(16px, 5vw, 24px); overflow: hidden; text-overflow: ellipsis; margin: 10px 0; text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+
+        .action-card-container {
+            background: var(--card);
+            border-radius: 28px;
+            padding: 35px 20px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.05); 
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            background-image: linear-gradient(145deg, var(--card), var(--bg));
+        }
+
+        #clock { 
+            font-size: clamp(35px, 12vw, 55px); 
+            font-weight: 900; 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            color: var(--s); 
+            text-align: center; 
+            margin: 10px 0 20px 0; 
+            text-shadow: 0 0 15px rgba(16, 185, 129, 0.3); 
+            letter-spacing: -1px;
+            direction: ltr;
+            display: block;
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.03); opacity: 0.9; }
+        }
+
+        .btn-modern {
+            border: none;
+            padding: 16px;
+            border-radius: 18px;
+            font-weight: 800;
+            font-size: 17px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: white;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+            width: 100%;
+        }
+
+        .btn-modern:active { transform: scale(0.95); }
+        .btn-start-grad { background: linear-gradient(135deg, #10b981, #059669); }
+        .btn-break-grad { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-stop-grad { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+        .controls-flex { display: flex; gap: 12px; margin-top: 5px; }
+
+        .top-taskbar {
+            position: sticky;
+            top: 0;
+            z-index: 1500;
+            background: var(--card);
+            backdrop-filter: blur(15px);
+            border-bottom: 1px solid var(--border);
+            padding: 8px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .taskbar-group { display: flex; gap: 15px; align-items: center; }
+
+        .icon-btn {
+            background: var(--inp-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: 0.3s;
+        }
+
+        #selectionScreen, #mainDashboard { padding: 15px; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #toastContainer { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; width: 90%; max-width: 320px; }
+        .toast { background: var(--card); color: var(--text); padding: 15px 20px; border-radius: 12px; border-right: 5px solid var(--p); box-shadow: 0 15px 30px rgba(0,0,0,0.2); animation: slideIn 0.4s forwards; font-weight: 600; font-size: 14px; border: 1px solid var(--border); }
+        @keyframes slideIn { from { transform: translateY(-120%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .card { background: var(--card); border-radius: 20px; padding: 22px; border: 1px solid var(--border); margin-bottom: 15px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--card); padding: 15px; border-radius: 15px; border-bottom: 3px solid var(--p); text-align: center; border: 1px solid var(--border); }
+        .stat-card small { color: #94a3b8; font-size: 11px; display: block; margin-bottom: 5px; }
+        .stat-card div { font-weight: 900; font-size: 16px; color: var(--s); }
+
+        .btn { border: none; padding: 15px; border-radius: 14px; font-weight: 700; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 15px; color: white; transition: 0.2s; }
+        .btn-p { background: var(--p); } .btn-s { background: var(--s); } .btn-d { background: var(--d); }
+        .inp { width: 100%; padding: 14px; background: var(--inp-bg); border: 1px solid var(--border); color: var(--text); border-radius: 12px; margin-top: 6px; outline: none; }
+        
+        .logs-header { display: flex; align-items: center; gap: 10px; margin: 25px 5px 10px 5px; color: #94a3b8; font-weight: bold; border-right: 4px solid var(--p); padding-right: 10px; }
+        
+        #logsBox { max-height: 350px; overflow-y: auto; padding: 5px; display: flex; flex-direction: column; gap: 10px; }
+        
+        .log-card-big { background: var(--card); border: 1px solid var(--border); border-right: 8px solid var(--p); border-radius: 18px; padding: 15px; position: relative; }
+        .money-log { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-radius: 12px; background: var(--inp-bg); margin-bottom: 8px; border-right: 6px solid var(--p); border: 1px solid var(--border); }
+        
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 15px; backdrop-filter: blur(5px); }
+        .modal-content { background: var(--bg); color: var(--text); width: 100%; max-width: 450px; padding: 25px; border-radius: 25px; border: 1px solid var(--border); max-height: 90vh; overflow-y: auto; }
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); backdrop-filter: blur(15px); padding: 15px; border-top: 3px solid var(--s); display: flex; justify-content: space-between; z-index: 1000; }
+        .action-icon { background: var(--border); border: none; cursor: pointer; padding: 10px; border-radius: 10px; color: var(--text); font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        
+        .mgr-section { background: var(--card); border: 1px solid var(--border); border-radius: 15px; padding: 15px; margin-top: 15px; }
+        .mgr-section-title { font-size: 14px; color: #94a3b8; margin-bottom: 12px; display: block; font-weight: bold; border-right: 3px solid var(--p); padding-right: 8px; }
+        .archive-item { background: var(--inp-bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 5px; font-size: 12px; }
+        .whatsapp-btn { background: #25D366; color: white; padding: 14px; border-radius: 14px; display: none; align-items: center; justify-content: center; gap: 10px; font-weight: bold; text-decoration: none; margin-top: 10px; width: 100%; border: none; cursor: pointer; }
+        .emp-item { display: flex; justify-content: space-between; align-items: center; background: var(--inp-bg); padding: 12px 15px; margin-bottom: 8px; border-radius: 12px; border: 1px solid var(--border); transition: 0.2s; }
+        
+        /* استايل خريطة الحضور */
+        .heatmap-container { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+        .heatmap-day { width: 25px; height: 25px; border-radius: 4px; border: 1px solid var(--border); font-size: 8px; display: flex; align-items: center; justify-content: center; }
+        .day-active { background: var(--s); color: white; }
+        .day-inactive { background: var(--inp-bg); opacity: 0.3; }
+    </style>
+</head>
+<body onload="initApp()">
+
+    <div id="receiptTemplate">
+        <div class="receipt-header">
+            <div id="receiptLogoPlace"></div>
+            <h2 id="receiptCompanyName">اسم الشركة</h2>
+            <p>وصل استلام راتب شهر <span id="receiptDate"></span></p>
+        </div>
+        <div class="receipt-row"><span>اسم الموظف:</span><b id="rEmpName"></b></div>
+        <div class="receipt-row"><span>إجمالي ساعات العمل:</span><b id="rEmpTime"></b></div>
+        <div class="receipt-row"><span>أجر الساعات الكلي:</span><b id="rEmpBase"></b></div>
+        <div class="receipt-row"><span>إضافات (مكافآت):</span><b id="rEmpBonus" style="color: green;"></b></div>
+        <div class="receipt-row"><span>خصومات وسلف:</span><b id="rEmpDeduct" style="color: red;"></b></div>
+        <div class="receipt-row" style="background: #f0f4ff; padding: 15px 5px; border-bottom: none; margin-top: 10px;">
+            <span>صافي المبلغ المستلم:</span><b id="rEmpFinal" style="font-size: 20px; color: #3b82f6;"></b>
+        </div>
+        <div class="receipt-footer">
+            <p>توقيع المحاسب: .............................</p>
+            <p>تم استلام المبلغ المذكور أعلاه نقداً</p>
+            <small>صدر بواسطة نظام الإدارة الذكي 2026</small>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+    <div id="announcementBar" class="announcement-bar">📢 لا توجد تعميمات جديدة</div>
+
+    <div class="top-taskbar">
+        <div class="taskbar-group">
+            <button class="icon-btn" onclick="backToSelection()" id="navHomeBtn" style="display:none; border-color: var(--s);">🏠</button>
+        </div>
+        <div class="taskbar-group">
+            <button class="icon-btn" onclick="rotateTheme()" id="themeIcon">🌙</button>
+            <button class="icon-btn" onclick="checkPin()" style="border-right: 3px solid var(--p);">⚙️</button>
+        </div>
+    </div>
+
+    <div id="selectionScreen">
+        <div class="brand-card">
+            <div class="brand-card-logo" id="displayLogo">💼</div>
+            <div class="brand-card-info">
+                <h1 id="displayName">نظام الإدارة المتكامل</h1>
+                <p>إدارة الموارد البشرية والرواتب الذكية 2026</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <small>💰 إجمالي مستحقات الكل</small>
+                <div id="statTotalCash">0 د.ع</div>
+            </div>
+            <div class="stat-card" style="border-color: var(--w);">
+                <small>👥 المداومون الآن</small>
+                <div id="statActiveCount" style="color: var(--w);">0</div>
+            </div>
+            <div class="stat-card" style="grid-column: span 2; border-color: var(--s);">
+                <small>🏆 الأعلى إنتاجية (ساعات)</small>
+                <div id="statTopEmp" style="color: var(--s);">---</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <input type="text" id="searchBar" class="inp" placeholder="🔍 ابحث عن اسم الموظف..." oninput="drawSelection()">
+            <div id="empGrid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:20px;"></div>
+        </div>
+    </div>
+
+    <div id="mainDashboard" style="display: none;">
+        <div class="brand-card" style="margin-bottom: 10px; padding: 15px; flex-direction: row; gap: 15px; justify-content: flex-start;">
+            <div class="brand-card-logo" id="dashLogo" style="width: 60px; height: 60px; font-size: 30px; margin-bottom: 0;">💼</div>
+            <div class="brand-card-info" style="text-align: right;">
+                <h1 id="dashDisplayName" style="white-space: nowrap; font-size: 18px; overflow: hidden; text-overflow: ellipsis; margin: 0;">نظام الإدارة المتكامل</h1>
+            </div>
+        </div>
+
+        <div class="action-card-container">
+            <small style="color: #94a3b8; font-weight: bold; letter-spacing: 1px;">سجل الدوام والحضور</small>
+            <div id="clock">00:00:00</div>
+            
+            <button id="startBtn" class="btn-modern btn-start-grad" onclick="startShift()">
+                <span>▶️</span> بدء الدوام الآن
+            </button>
+            
+            <div id="activeControls" style="display:none;" class="controls-flex">
+                <button id="breakBtn" class="btn-modern btn-break-grad" onclick="toggleBreak()" style="flex: 1.2;">
+                    ☕ استراحة
+                </button>
+                <button class="btn-modern btn-stop-grad" onclick="stopShift()" style="flex: 1;">
+                    🛑 إنهاء
+                </button>
+            </div>
+        </div>
+        
+        <div class="card" style="border-right: 5px solid var(--s); padding: 0; overflow: hidden;">
+            <div onclick="toggleSection('changePinContent', 'pinChangeArrow')" style="padding: 15px 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.05);">
+                <h4 style="margin:0;">🔒 تغيير رمز الدخول الخاص بي</h4>
+                <span id="pinChangeArrow" style="transition: 0.3s;">▼</span>
+            </div>
+            <div id="changePinContent" style="display: none; padding: 0 22px 22px 22px; animation: fadeIn 0.3s ease;">
+                <div style="margin-top: 10px;">
+                    <small style="color: #94a3b8;">أدخل الرمز السري الجديد (4 أرقام):</small>
+                    <div style="position: relative;">
+                        <input type="password" id="newMyPinInp" class="inp" placeholder="****" maxlength="4" style="text-align: center; font-size: 20px; letter-spacing: 5px; padding-right: 45px;">
+                        <button onclick="toggleVisibility('newMyPinInp')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-10%); background: none; border: none; cursor: pointer; font-size: 18px;">👁️</button>
+                    </div>
+                    <button class="btn btn-s" style="margin-top:10px" onclick="changeMyPin()">تحديث الرمز السري</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border-right: 5px solid var(--p); margin-top: 20px; padding: 0; overflow: hidden;">
+            <div onclick="toggleSection('leaveContent', 'leaveArrow')" style="padding: 15px 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                <h4 style="margin:0;">📅 طلب إجازة</h4>
+                <span id="leaveArrow" style="transition: 0.3s;">▼</span>
+            </div>
+            <div id="leaveContent" style="display: none; padding: 0 22px 22px 22px; animation: fadeIn 0.3s ease;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top: 10px;">
+                    <input type="date" id="leaveDate" class="inp">
+                    <select id="leaveType" class="inp">
+                        <option value="اعتيادية">اعتيادية</option>
+                        <option value="مرضية">مرضية</option>
+                    </select>
+                </div>
+                <button class="btn btn-p" style="margin-top:10px" onclick="requestLeave()">إرسال الطلب</button>
+                <div id="myLeavesStatus" style="margin-top:10px; font-size:12px; max-height:120px; overflow-y:auto; padding-left:5px;"></div>
+            </div>
+        </div>
+
+        <div class="card" style="border-right: 5px solid var(--w); padding: 0; overflow: hidden;">
+            <div onclick="toggleSection('financeContent', 'financeArrow')" style="padding: 15px 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(245, 158, 11, 0.05);">
+                <h4 style="margin:0;">💰 العمليات المالية والسلف</h4>
+                <span id="financeArrow" style="transition: 0.3s;">▼</span>
+            </div>
+            <div id="financeContent" style="display: none; padding: 0 22px 22px 22px; animation: fadeIn 0.3s ease;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top: 10px;">
+                    <input type="number" id="moneyAmount" class="inp" placeholder="المبلغ">
+                    <select id="moneyType" class="inp" onchange="toggleInstallmentField()">
+                        <option value="bonus">🟢 مكافأة</option>
+                        <option value="deduct">🔴 استقطاع</option>
+                        <option value="debt">💸 سلفة (دين)</option>
+                        <option value="installment">📅 سلفة مقسطة</option>
+                        <option value="shop">🛒 مشتريات محل</option>
+                    </select>
+                </div>
+                <input type="number" id="installAmount" class="inp" placeholder="القسط..." style="display:none; margin-top:8px; border-color:var(--w)">
+                <input type="text" id="moneyReason" class="inp" placeholder="السبب..." style="margin-top: 10px; margin-bottom: 15px;">
+                <button class="btn" style="background:#475569;" onclick="addFinancial()">إضافة العملية</button>
+                <div id="activeDebtsBox" style="margin-top:15px; max-height:100px; overflow-y:auto;"></div>
+                <div id="financialLogs" style="margin-top:15px; max-height:200px; overflow-y:auto; padding-left:5px;"></div>
+            </div>
+        </div>
+
+        <div class="card" style="border-right: 5px solid #64748b; padding: 0; overflow: hidden;">
+            <div onclick="toggleSection('archiveContent', 'archiveArrow')" style="padding: 15px 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(100, 116, 139, 0.05);">
+                <h4 style="margin:0;">📂 أرشيف الحسابات</h4>
+                <span id="archiveArrow" style="transition: 0.3s;">▼</span>
+            </div>
+            <div id="archiveContent" style="display: none; padding: 0 22px 22px 22px; animation: fadeIn 0.3s ease;">
+                <input type="text" id="archiveSearch" class="inp" placeholder="🔍 ابحث بالتاريخ (مثلاً: 2026/1/12)" oninput="drawArchive()" style="margin-top:10px; margin-bottom:10px; font-size:13px;">
+                <div id="archiveBox" style="max-height:180px; overflow-y:auto; font-size: 13px; padding-left:5px;"></div>
+            </div>
+        </div>
+
+        <div class="card" style="border-right: 5px solid var(--p); margin-top: 20px; padding: 0; overflow: hidden;">
+            <div onclick="toggleSection('logsContent', 'logsArrow')" style="padding: 15px 22px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                <h4 style="margin:0;">⏱️ السجل الحالي للحضور</h4>
+                <span id="logsArrow" style="transition: 0.3s;">▼</span>
+            </div>
+            <div id="logsContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                <div id="logsBox"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="empPinModal" class="modal">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <h3 id="pinModalTitle">🔒 دخول الموظف</h3>
+            <p id="pinModalName" style="color: var(--p); font-weight: bold; margin-bottom: 15px;"></p>
+            
+            <div style="position: relative;">
+                <input type="password" id="empPinInput" class="inp" 
+                       style="text-align: center; font-size: 28px; padding-right: 45px;" 
+                       placeholder="****">
+                <button onclick="togglePinVisibility()" 
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-30%); background: none; border: none; cursor: pointer; font-size: 20px;">
+                    👁️
+                </button>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn-p" onclick="confirmEmpPin()">دخول</button>
+                <button class="btn" style="background: var(--border);" onclick="closeEmpPinModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="editEmpModal" class="modal">
+        <div class="modal-content" style="max-width: 350px;">
+            <h3 style="text-align: center; margin-bottom: 20px;">✏️ تعديل بيانات الموظف</h3>
+            <div style="margin-bottom: 15px;">
+                <small style="color: #94a3b8;">اسم الموظف الجديد:</small>
+                <input type="text" id="editEmpNameInp" class="inp" placeholder="أدخل الاسم الجديد">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 25px;">
+                <button class="btn btn-s" onclick="saveNewEmpName()">حفظ التعديل</button>
+                <button class="btn" style="background: var(--border);" onclick="closeEditModal()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pinModal" class="modal">
+        <div class="modal-content" style="max-width: 320px; text-align: center;">
+            <h3>🔒 رمز الإدارة</h3>
+            <input type="password" id="pinInput" class="inp" style="text-align: center; font-size: 28px;">
+            <button class="btn btn-p" style="margin-top: 20px;" onclick="validatePin()">دخول</button>
+        </div>
+    </div>
+
+    <div id="mgrModal" class="modal">
+        <div class="modal-content">
+            <h2 style="text-align:center;">لوحة التحكم</h2>
+            
+            <div id="adminAlertsBox" style="margin-top: 15px; margin-bottom: 25px; background: rgba(239, 68, 68, 0.1); border-radius: 12px; padding: 15px; border: 1px solid var(--d);">
+                <h4 style="margin:0 0 10px 0; color:var(--d);">🚨 مراقبة التأخير</h4>
+                <div id="adminAlertsList"></div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--w);">
+                <div onclick="toggleSection('mgrAnnounceContent', 'mgrAnnounceArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(245, 158, 11, 0.05);">
+                    <span class="mgr-section-title" style="margin:0; color:var(--w);">📢 إرسال تعميم للموظفين</span>
+                    <span id="mgrAnnounceArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrAnnounceContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="text" id="announceInp" class="inp" placeholder="اكتب نص التعميم هنا (مثال: غداً عطلة رسمية)">
+                        <div style="display: flex; gap: 5px;">
+                            <button class="btn btn-s" onclick="publishAnnouncement()">نشر التعميم</button>
+                            <button class="btn btn-d" onclick="clearAnnouncement()">حذف التعميم</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid #8b5cf6;">
+                <div onclick="toggleSection('mgrChartsContent', 'mgrChartsArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(139, 92, 246, 0.05);">
+                    <span class="mgr-section-title" style="margin:0; color:#8b5cf6;">📊 التحليل البياني الذكي</span>
+                    <span id="mgrChartsArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrChartsContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <canvas id="attendanceChart" style="max-height: 250px; margin-bottom: 20px;"></canvas>
+                    <canvas id="financeChart" style="max-height: 250px; margin-bottom: 20px;"></canvas>
+                    <canvas id="monthlyChart" style="max-height: 250px; margin-bottom: 20px;"></canvas>
+                    <canvas id="debtChart" style="max-height: 250px; margin-bottom: 20px;"></canvas>
+                    
+                    <div style="margin-top:20px;">
+                        <span class="mgr-section-title">🔥 خريطة التزام الموظفين (آخر 30 يوم)</span>
+                        <div id="heatmapContainer" class="heatmap-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--p);">
+                <div onclick="toggleSection('mgrFinanceContent', 'mgrFinanceArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">📊 إدارة الحسابات والبيانات</span>
+                    <span id="mgrFinanceArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                
+                <div id="mgrFinanceContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <button class="btn" style="background: #3b82f6; margin-bottom: 12px;" onclick="document.getElementById('xlInp').click()">
+                        📂 استيراد ملف بصمة (Excel)
+                    </button>
+                    <input type="file" id="xlInp" hidden accept=".xlsx, .xls" onchange="readExcel(this)">
+                    
+                    <button class="btn" style="background: #10b981; margin-bottom: 12px;" onclick="exportToExcel()">
+                        📊 تصدير كشف الراتب (Excel)
+                    </button>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                        <button class="btn" style="background: #6366f1;" onclick="settleAccount()">
+                            💵 تصفية الحساب (دفع)
+                        </button>
+                        <button class="btn" style="background: #f59e0b;" onclick="generatePDF()">
+                            📄 وصل PDF
+                        </button>
+                    </div>
+                    
+                    <button id="waBtn" class="whatsapp-btn" onclick="sendWhatsApp()">
+                        🟢 إرسال كشف WhatsApp
+                    </button>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px; border-top: 1px solid var(--border); padding-top: 15px;">
+                        <button class="btn" style="background:#475569;" onclick="backupData()">📤 نسخة احتياطية</button>
+                        <button class="btn" style="background:#475569;" onclick="document.getElementById('restoreInp').click()">📥 استرجاع نسخة</button>
+                    </div>
+                    <input type="file" id="restoreInp" hidden onchange="restoreData(this)">
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--w);">
+                <div onclick="toggleSection('mgrLeavesContent', 'mgrLeavesArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(245, 158, 11, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">🔔 طلبات الإجازات</span>
+                    <span id="mgrLeavesArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrLeavesContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <div id="mgrLeaveRequests" style="max-height:200px; overflow-y:auto;"></div>
+                </div>
+            </div>
+            
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--p);">
+                <div onclick="toggleSection('mgrEmpSettingsContent', 'mgrEmpSettingsArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">⚙️ إعدادات الموظف الحالي ( <span id="mgrCurEmpName" style="color:var(--p)">---</span> )</span>
+                    <span id="mgrEmpSettingsArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrEmpSettingsContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        <div><small>سعر الساعة</small><input type="number" id="rateInp" class="inp" placeholder="0" oninput="updateSettings()"></div>
+                        <div><small>خصم الإكسل</small><input type="number" id="offInp" class="inp" placeholder="0" oninput="updateSettings()"></div>
+                        <div><small>بدء الدوام</small><input type="time" id="empWorkStart" class="inp" oninput="updateSettings()"></div>
+                        <div><small>غرامة التأخير</small><input type="number" id="empLatePenalty" class="inp" placeholder="0" oninput="updateSettings()"></div>
+                        <div>
+                            <small>الرمز السري الخاص</small>
+                            <div style="position: relative;">
+                                <input type="password" id="empPinInp" class="inp" placeholder="0000" oninput="updateSettings()" style="padding-right: 40px;">
+                                <button onclick="toggleVisibility('empPinInp')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-10%); background: none; border: none; cursor: pointer; font-size: 16px;">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--p);">
+                <div onclick="toggleSection('mgrSystemConfig', 'mgrConfigArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">🎨 تخصيص النظام</span>
+                    <span id="mgrConfigArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrSystemConfig" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <div onclick="document.getElementById('logoInp').click()" id="mgrLogo" style="width:70px; height:70px; margin:0 auto 15px auto; border-radius:50%; border:2px dashed var(--p); display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:pointer;">💼</div>
+                    <input type="file" id="logoInp" hidden accept="image/*" onchange="previewLogo(this)">
+                    
+                    <small>اسم المنشأة/الشركة</small>
+                    <input type="text" id="nameInp" class="inp" placeholder="اسم الشركة">
+
+                    <small style="margin-top:10px; display:block;">اختيار سمة النظام (Theme)</small>
+                    <select id="themeSelect" class="inp" onchange="applyTheme(this.value)">
+                        <option value="dark">🌙 مظلم (Dark)</option>
+                        <option value="light">☀️ فاتح (Light)</option>
+                        <option value="midnight">🌌 منتصف الليل (Midnight)</option>
+                        <option value="royal">👑 بنفسجي ملكي (Royal)</option>
+                        <option value="forest">🌲 الغابة الخضراء (Forest)</option>
+                    </select>
+
+                    <div style="display:none;">
+                        <input type="time" id="workStartTime" oninput="updateGlobalConfigs()">
+                        <input type="number" id="latePenalty" oninput="updateGlobalConfigs()">
+                    </div>
+                    
+                    <button class="btn btn-s" style="margin-top:15px" onclick="confirmAndSave()">💾 حفظ الإعدادات</button>
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--p);">
+                <div onclick="toggleSection('mgrEmpListContent', 'mgrEmpArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(59, 130, 246, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">👥 الموظفين</span>
+                    <span id="mgrEmpArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                
+                <div id="mgrEmpListContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="addEmpInp" class="inp" placeholder="الاسم">
+                        <button class="btn btn-p" style="width:80px" onclick="addNewEmp()">أضف</button>
+                    </div>
+                    <div id="mgrEmpList" style="margin-top:15px; max-height:250px; overflow-y:auto;"></div>
+                </div>
+            </div>
+
+            <div class="mgr-section" style="padding: 0; overflow: hidden; border-right: 5px solid var(--s);">
+                <div onclick="toggleSection('mgrSecurityContent', 'mgrSecurityArrow')" style="padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(16, 185, 129, 0.05);">
+                    <span class="mgr-section-title" style="margin:0;">🔒 الأمان (رمز المدير)</span>
+                    <span id="mgrSecurityArrow" style="transition: 0.3s;">▼</span>
+                </div>
+                <div id="mgrSecurityContent" style="display: none; padding: 15px; animation: fadeIn 0.3s ease;">
+                    <input type="password" id="newPinInp" class="inp" placeholder="رمز جديد">
+                    <button class="btn btn-s" onclick="changePin()" style="margin-top:10px">تحديث الرمز</button>
+                </div>
+            </div>
+
+            <button class="btn" style="background:#374151; margin-top:15px" onclick="closeMgr()">إغلاق</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div><small>الموظف</small><br><span id="fName" style="font-weight:800; color:var(--p)">---</span></div>
+        <div style="text-align:center"><small>الصافي</small><br><span id="fMoney" style="color:var(--s); font-weight:800">0 د.ع</span></div>
+        <div style="text-align:left"><small>الزمن</small><br><span id="fTime">0س 0د</span></div>
+    </div>
+
+<script>
+    const STORAGE_ID = "HR_FINAL_MASTER_STORAGE_2026_V2";
+    let db = JSON.parse(localStorage.getItem(STORAGE_ID)) || { emps: {}, config: { name: "نظام الموظفين", logo: null, pin: "1234", theme: "dark", workStartTime: "08:00", latePenalty: 0, incentiveAmount: 0, announcement: null } };
+    let curId = null; let timer = null; let lastSettleMsg = "";
+    let editingEmpId = null; 
+    let attendanceChart = null, financeChart = null, monthlyChart = null, debtChart = null; 
+    let pendingEmpId = null;    
+    
+    function saveDB() { localStorage.setItem(STORAGE_ID, JSON.stringify(db)); }
+    
+    function showToast(msg, type='p') { 
+        const c = document.getElementById('toastContainer'); 
+        const t = document.createElement('div'); 
+        t.className = 'toast'; 
+        let borderColor = `var(--${type})`;
+        if(type === 's') borderColor = '#10b981';
+        if(type === 'd') borderColor = '#ef4444';
+        if(type === 'w') borderColor = '#f59e0b';
+        t.style.borderRight = `5px solid ${borderColor}`; 
+        t.innerHTML = `<span>🔔</span> ${msg}`; 
+        c.appendChild(t); 
+        setTimeout(() => { t.style.opacity='0'; setTimeout(()=>t.remove(),400); }, 3000); 
+    }
+    
+    function rotateTheme() {
+        const themes = ['dark', 'light', 'midnight', 'royal', 'forest'];
+        let current = db.config.theme || 'dark';
+        let next = themes[(themes.indexOf(current) + 1) % themes.length];
+        applyTheme(next);
+    }
+
+    function applyTheme(theme) { 
+        document.documentElement.setAttribute('data-theme', theme); 
+        db.config.theme = theme; 
+        saveDB(); 
+        const icons = { 'dark': '🌙', 'light': '☀️', 'midnight': '🌌', 'royal': '👑', 'forest': '🌲' };
+        document.getElementById('themeIcon').innerText = icons[theme] || '🌓';
+        document.getElementById('themeSelect').value = theme;
+    }
+    
+    function initApp() { 
+        applyTheme(db.config.theme || 'dark'); 
+        applyUI(); 
+        calculateGlobalStats(); 
+        drawSelection(); 
+        updateAnnouncementUI(); 
+    }
+
+    function applyUI() { 
+        const name = db.config.name;
+        const logo = db.config.logo;
+        document.getElementById('nameInp').value = name; 
+        document.getElementById('displayName').innerText = name;
+        document.getElementById('dashDisplayName').innerText = name;
+        document.getElementById('workStartTime').value = db.config.workStartTime || "08:00"; 
+        document.getElementById('latePenalty').value = db.config.latePenalty || 0; 
+        const img = logo ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;">` : "💼"; 
+        document.getElementById('mgrLogo').innerHTML = img; 
+        document.getElementById('displayLogo').innerHTML = img;
+        document.getElementById('dashLogo').innerHTML = img;
+    }
+
+    // وظيفة توليد الـ PDF الجديدة
+    function generatePDF() {
+        if(!curId) { alert("يرجى اختيار موظف أولاً"); return; }
+        let e = db.emps[curId];
+        
+        // حساب البيانات
+        let curMin = 0, bonus = 0, deduct = 0;
+        if(e.logs) e.logs.forEach(l => { if(!l.isPaid) curMin += (l.type==='إكسل'?Math.max(0, l.m-(e.off||0)):l.m); });
+        if(e.finance) e.finance.forEach(f => { if(!f.isPaid) { if(f.amount > 0) bonus += f.amount; else deduct += Math.abs(f.amount); } });
+        
+        let inst = 0;
+        if(e.debts) e.debts.forEach(d => { if(d.remaining > 0) inst += Math.min(d.remaining, d.installment); });
+        
+        let basePay = (curMin/60) * (e.rate || 0);
+        let finalPay = basePay + bonus - deduct - inst;
+
+        // تعبئة قالب الـ PDF
+        document.getElementById('receiptCompanyName').innerText = db.config.name;
+        document.getElementById('rEmpName').innerText = e.name;
+        document.getElementById('receiptDate').innerText = new Date().toLocaleDateString('ar-EG', {month: 'long', year: 'numeric'});
+        document.getElementById('rEmpTime').innerText = Math.floor(curMin/60) + " ساعة و " + Math.round(curMin%60) + " دقيقة";
+        document.getElementById('rEmpBase').innerText = Math.floor(basePay).toLocaleString() + " د.ع";
+        document.getElementById('rEmpBonus').innerText = "+" + bonus.toLocaleString() + " د.ع";
+        document.getElementById('rEmpDeduct').innerText = "-" + (deduct + inst).toLocaleString() + " د.ع";
+        document.getElementById('rEmpFinal').innerText = Math.floor(finalPay).toLocaleString() + " د.ع";
+        
+        const logo = db.config.logo;
+        document.getElementById('receiptLogoPlace').innerHTML = logo ? `<img src="${logo}" class="receipt-logo">` : "💼";
+
+        // خيارات التصدير
+        const element = document.getElementById('receiptTemplate');
+        element.style.display = 'block'; // إظهار مؤقت للمكتبة
+        
+        const opt = {
+            margin:       10,
+            filename:     `وصل_راتب_${e.name}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.style.display = 'none'; // إخفاء بعد الانتهاء
+            showToast("تم توليد الوصل بنجاح", "s");
+        });
+    }
+
+    function publishAnnouncement() {
+        let msg = document.getElementById('announceInp').value.trim();
+        if(!msg) return;
+        db.config.announcement = msg;
+        saveDB();
+        showToast("تم نشر التعميم بنجاح", "s");
+        updateAnnouncementUI();
+    }
+
+    function clearAnnouncement() {
+        db.config.announcement = null;
+        saveDB();
+        showToast("تم حذف التعميم", "d");
+        updateAnnouncementUI();
+    }
+
+    function updateAnnouncementUI() {
+        const bar = document.getElementById('announcementBar');
+        if(db.config.announcement) {
+            bar.innerText = "📢 " + db.config.announcement;
+            bar.style.display = 'block';
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+
+    function toggleSection(contentId, arrowId) {
+        const content = document.getElementById(contentId);
+        const arrow = document.getElementById(arrowId);
+        if (content.style.display === 'none') {
+            content.style.display = 'block';
+            arrow.style.transform = 'rotate(180deg)';
+        } else {
+            content.style.display = 'none';
+            arrow.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    function checkPin() { document.getElementById('pinInput').value = ""; document.getElementById('pinModal').style.display = 'flex'; }
+    function validatePin() { if(document.getElementById('pinInput').value === db.config.pin) { document.getElementById('pinModal').style.display = 'none'; openMgr(); } else { alert("خطأ!"); } }
+    
+    function openMgr() { 
+        document.getElementById('mgrModal').style.display = 'flex'; 
+        drawMgrEmps(); 
+        checkAdminAlerts(); 
+        drawMgrLeaves(); 
+        setTimeout(updateCharts, 300);
+        
+        if(curId && db.emps[curId]) {
+            let e = db.emps[curId];
+            document.getElementById('mgrCurEmpName').innerText = e.name;
+            document.getElementById('rateInp').value = e.rate || "";
+            document.getElementById('offInp').value = e.off || "";
+            document.getElementById('empWorkStart').value = e.workStartTime || "";
+            document.getElementById('empLatePenalty').value = e.latePenalty || "";
+            document.getElementById('empPinInp').value = e.empPin || "0000";
+        } else {
+            document.getElementById('mgrCurEmpName').innerText = "اختر موظفاً أولاً";
+        }
+    }
+
+    function updateCharts() {
+        const ctxAttendance = document.getElementById('attendanceChart').getContext('2d');
+        const ctxFinance = document.getElementById('financeChart').getContext('2d');
+        const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+        const ctxDebt = document.getElementById('debtChart').getContext('2d');
+
+        let empNames = []; let workDays = []; let totalFinanceOut = []; let totalDebts = [];
+        let monthData = {};
+
+        for (let id in db.emps) {
+            let e = db.emps[id]; empNames.push(e.name);
+            let days = e.logs ? [...new Set(e.logs.map(l => l.d))].length : 0;
+            workDays.push(days);
+            let dSum = 0; if(e.debts) e.debts.forEach(d => dSum += d.remaining);
+            totalDebts.push(dSum);
+            let out = 0; if(e.finance) e.finance.forEach(f => { if(f.amount < 0) out += Math.abs(f.amount); });
+            totalFinanceOut.push(out);
+            if(e.archive) {
+                e.archive.forEach(item => {
+                    let month = item.date.split('/')[1] || "0";
+                    monthData[month] = (monthData[month] || 0) + item.amount;
+                });
+            }
+        }
+
+        if (attendanceChart) attendanceChart.destroy();
+        if (financeChart) financeChart.destroy();
+        if (monthlyChart) monthlyChart.destroy();
+        if (debtChart) debtChart.destroy();
+
+        attendanceChart = new Chart(ctxAttendance, {
+            type: 'bar',
+            data: { labels: empNames, datasets: [{ label: 'أيام الحضور الكلية', data: workDays, backgroundColor: '#3b82f6', borderRadius: 8 }] },
+            options: { responsive: true, plugins: { legend: { display:false } } }
+        });
+
+        financeChart = new Chart(ctxFinance, {
+            type: 'line',
+            data: { labels: empNames, datasets: [{ label: 'إجمالي الاستقطاعات', data: totalFinanceOut, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.4 }] },
+            options: { responsive: true }
+        });
+
+        monthlyChart = new Chart(ctxMonthly, {
+            type: 'bar',
+            data: { 
+                labels: Object.keys(monthData).map(m => "شهر " + m), 
+                datasets: [{ label: 'إجمالي رواتب المنشأة', data: Object.values(monthData), backgroundColor: '#10b981' }] 
+            },
+            options: { responsive: true, plugins: { title: { display: true, text: 'تحليل الرواتب الشهرية' } } }
+        });
+
+        debtChart = new Chart(ctxDebt, {
+            type: 'doughnut',
+            data: { labels: empNames, datasets: [{ label: 'السلف المتبقية', data: totalDebts, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899'] }] },
+            options: { responsive: true, plugins: { title: { display: true, text: 'توزيع السلف بين الموظفين' } } }
+        });
+
+        drawHeatmap();
+    }
+
+    function drawHeatmap() {
+        const container = document.getElementById('heatmapContainer');
+        container.innerHTML = "";
+        if(!curId) return;
+        let e = db.emps[curId];
+        let today = new Date();
+        for(let i=30; i>=0; i--) {
+            let d = new Date(); d.setDate(today.getDate() - i);
+            let dStr = d.toLocaleDateString('ar-EG');
+            let wasPresent = e.logs && e.logs.some(l => l.d === dStr);
+            let dayBox = document.createElement('div');
+            dayBox.className = `heatmap-day ${wasPresent ? 'day-active' : 'day-inactive'}`;
+            dayBox.title = dStr;
+            dayBox.innerText = d.getDate();
+            container.appendChild(dayBox);
+        }
+    }
+    
+    function checkAdminAlerts() { 
+        let listHtml = ""; let lateCount = 0; const now = new Date(); 
+        for (let id in db.emps) { 
+            let e = db.emps[id]; 
+            const empStartTime = e.workStartTime || db.config.workStartTime || "08:00";
+            const [startH, startM] = empStartTime.split(':').map(Number); 
+            const startTimeToday = new Date(); startTimeToday.setHours(startH, startM, 0); 
+            let isLate = false; let statusText = ""; 
+            if (!e.isWorking && now > startTimeToday) { isLate = true; statusText = "لم يحضر"; } 
+            else if (e.isWorking && e.firstStartToday) { 
+                let startLog = new Date(e.firstStartToday); 
+                if (startLog > startTimeToday) { isLate = true; statusText = `تأخر`; } 
+            } 
+            if (isLate) { listHtml += `<div style="color:var(--d); font-size:13px; margin-bottom:5px;">● ${e.name}: ${statusText} (موعده: ${empStartTime})</div>`; lateCount++; } 
+        } 
+        document.getElementById('adminAlertsList').innerHTML = listHtml || "<small>✅ لا يوجد تأخير</small>"; 
+    }
+
+    function calculateGlobalStats() { 
+        let total = 0, active = 0, topName = "---", maxHours = 0; 
+        for (let id in db.emps) { 
+            let e = db.emps[id]; if (e.isWorking) active++; 
+            let empMinutes = 0, empFinance = 0; 
+            if(e.logs) e.logs.forEach(l => { if(!l.isPaid) empMinutes += (l.type==='إكسل'?Math.max(0, l.m-(e.off||0)):l.m); }); 
+            if(e.finance) e.finance.forEach(f => { if(!f.isPaid) empFinance += f.amount; }); 
+            total += (empMinutes/60*(e.rate||0)) + empFinance; 
+            if (empMinutes/60 > maxHours) { maxHours = empMinutes/60; topName = e.name; } 
+        } 
+        document.getElementById('statTotalCash').innerText = Math.floor(total).toLocaleString() + " د.ع"; 
+        document.getElementById('statActiveCount').innerText = active; 
+        document.getElementById('statTopEmp').innerText = maxHours > 0 ? `${topName} (${Math.floor(maxHours)}س)` : "---"; 
+    }
+
+    function startShift() { 
+        let e=db.emps[curId]; 
+        e.isWorking=true; e.onBreak=false; e.lastStart=Date.now(); e.totalMs=0; e.firstStartToday = Date.now(); 
+        const now = new Date();
+        const fullDateTime = now.toLocaleDateString('ar-EG') + " - " + now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+        const empStartTime = e.workStartTime || db.config.workStartTime || "08:00";
+        const empPenalty = (e.latePenalty !== "" && e.latePenalty !== null) ? parseFloat(e.latePenalty) : 0;
+        const [sh, sm] = empStartTime.split(':').map(Number);
+        const sched = new Date(); sched.setHours(sh, sm, 0);
+        if (Date.now() > sched.getTime() && empPenalty > 0) {
+            if(!e.finance) e.finance = [];
+            e.finance.unshift({ amount: -empPenalty, reason: "غرامة تأخير تلقائية", date: fullDateTime, isPaid: false });
+            showToast(`تم تسجيل غرامة تأخير: ${empPenalty}`, "d");
+        }
+        saveDB(); refreshDash(); showToast("بدأ الدوام", "s"); 
+    }
+    
+    function toggleBreak() { let e = db.emps[curId]; if(!e.isWorking) return; if(e.onBreak) { e.lastStart = Date.now(); e.onBreak = false; showToast("عدت من الاستراحة", "s"); } else { e.totalMs += (Date.now() - e.lastStart); e.onBreak = true; showToast("في استراحة", "w"); } saveDB(); refreshDash(); }
+    function stopShift() { 
+        let e=db.emps[curId]; if(!e.onBreak) e.totalMs += (Date.now()-e.lastStart); 
+        let dur = e.totalMs / 60000; 
+        if(dur > 0.1) { if(!e.logs) e.logs = []; e.logs.unshift({ m: dur, d: new Date().toLocaleDateString('ar-EG'), type:'يدوي', isPaid: false }); } 
+        e.isWorking=false; e.totalMs=0; delete e.firstStartToday; saveDB(); refreshDash(); 
+    }
+    
+    function closeMgr() { document.getElementById('mgrModal').style.display = 'none'; }
+    function changePin() { let p = document.getElementById('newPinInp').value; if(p) { db.config.pin = p; saveDB(); showToast("تم التحديث بنجاح", "s"); } }
+    function toggleVisibility(id) { const input = document.getElementById(id); input.type = input.type === "password" ? "text" : "password"; }
+
+    function changeMyPin() {
+        let newPin = document.getElementById('newMyPinInp').value.trim();
+        if (newPin.length === 4 && !isNaN(newPin)) {
+            db.emps[curId].empPin = newPin;
+            saveDB();
+            showToast("تم تحديث رمز الدخول الخاص بك بنجاح", "s");
+            document.getElementById('newMyPinInp').value = "";
+        } else { showToast("يرجى إدخال 4 أرقام فقط", "d"); }
+    }
+
+    function updateGlobalConfigs() { db.config.workStartTime = document.getElementById('workStartTime').value; db.config.latePenalty = document.getElementById('latePenalty').value; saveDB(); }
+    
+    function addNewEmp() { 
+        let n = document.getElementById('addEmpInp').value.trim(); if(!n) return; 
+        db.emps["ID_"+Date.now()] = { name: n, logs: [], finance: [], archive: [], leaves: [], debts: [], rate: 0, off: 0, isWorking: false, onBreak: false, totalMs: 0, lastStart: 0, workStartTime: "", latePenalty: "0", empPin: "0000" }; 
+        saveDB(); document.getElementById('addEmpInp').value = ""; drawMgrEmps(); drawSelection(); calculateGlobalStats(); 
+    }
+
+    function drawSelection() { 
+        let t = document.getElementById('searchBar').value.toLowerCase(); let h = ""; 
+        for (let id in db.emps) { 
+            if (db.emps[id].name.toLowerCase().includes(t)) { 
+                let s = db.emps[id].isWorking ? '<br><small style="color:var(--s)">● مداوم</small>' : ''; 
+                h += `<div onclick=\"selectEmp('${id}')\" style=\"background:var(--card); padding:18px; border-radius:18px; border:1px solid var(--border); text-align:center; cursor:pointer;\"><b>${db.emps[id].name}</b>${s}</div>`; 
+            }
+        } 
+        document.getElementById('empGrid').innerHTML = h; 
+    }
+
+    function selectEmp(id) { 
+        pendingEmpId = id;
+        document.getElementById('pinModalName').innerText = db.emps[id].name;
+        document.getElementById('empPinInput').value = "";
+        document.getElementById('empPinModal').style.display = 'flex';
+    }
+
+    function closeEmpPinModal() { document.getElementById('empPinModal').style.display = 'none'; }
+    function togglePinVisibility() { const input = document.getElementById('empPinInput'); input.type = input.type === "password" ? "text" : "password"; }
+
+    function confirmEmpPin() {
+        let inputPin = document.getElementById('empPinInput').value;
+        let masterPin = db.config.pin;
+        let employeePin = db.emps[pendingEmpId].empPin || "0000";
+        if (inputPin === employeePin || inputPin === masterPin) {
+            curId = pendingEmpId; 
+            document.getElementById('empPinModal').style.display = 'none';
+            document.getElementById('selectionScreen').style.display = 'none'; 
+            document.getElementById('mainDashboard').style.display = 'block'; 
+            document.getElementById('navHomeBtn').style.display = 'flex'; 
+            refreshDash(); 
+        } else { showToast("الرمز السري غير صحيح!", "d"); }
+    }
+
+    function backToSelection() { 
+        curId = null; if(timer) clearInterval(timer); 
+        document.getElementById('mainDashboard').style.display = 'none'; 
+        document.getElementById('selectionScreen').style.display = 'block'; 
+        document.getElementById('navHomeBtn').style.display = 'none'; 
+        calculateGlobalStats(); drawSelection(); 
+    }
+
+    function refreshDash() { 
+        let e = db.emps[curId]; document.getElementById('fName').innerText = e.name; 
+        if(timer) clearInterval(timer); if(e.isWorking) timer = setInterval(tick, 1000); 
+        tick(); drawLogs(); drawArchive(); drawMyLeaves(); 
+    }
+
+    function tick() { 
+        let e = db.emps[curId]; if(!e) return; 
+        let curMs = (e.isWorking && !e.onBreak ? (Date.now() - e.lastStart) : 0); 
+        let ms = e.totalMs + curMs; 
+        let s = Math.floor(ms/1000), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sc = s%60; 
+        document.getElementById('clock').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`; 
+        document.getElementById('startBtn').style.display = e.isWorking ? 'none' : 'block'; 
+        document.getElementById('activeControls').style.display = e.isWorking ? 'flex' : 'none'; 
+    }
+
+    function requestLeave() { 
+        let e = db.emps[curId]; let d = document.getElementById('leaveDate').value; 
+        let t = document.getElementById('leaveType').value; if(!d) return; 
+        if(!e.leaves) e.leaves = []; e.leaves.unshift({ id: Date.now(), date: d, type: t, status: 'pending' }); 
+        saveDB(); drawMyLeaves(); showToast("تم إرسال طلب الإجازة", "s"); 
+    }
+
+    function drawMyLeaves() { 
+        let e = db.emps[curId]; if(!e || !e.leaves) return; 
+        let h = ""; let sM = { 'pending': '⏳', 'approved': '✅', 'rejected': '❌' }; 
+        e.leaves.forEach(l => { 
+            h += `<div class="archive-item" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span>📅 ${l.date} <small style="color:var(--p); margin-right:5px;">(${l.type})</small></span>
+                    <span>${sM[l.status]}</span>
+                  </div>`; 
+        }); 
+        document.getElementById('myLeavesStatus').innerHTML = h; 
+    }
+
+    function drawMgrLeaves() { 
+        let h = ""; for(let id in db.emps) { 
+            let e = db.emps[id]; if(e.leaves) { 
+                e.leaves.forEach((l) => { if(l.status === 'pending') { 
+                    h += `<div class="archive-item" style="display:flex; justify-content:space-between; align-items:center;"><div>👤 <b>${e.name}</b><br>${l.date} (${l.type})</div><div style="display:flex; gap:8px;"><button onclick="processLeave('${id}', ${l.id}, 'approved')" class="action-icon" style="color:var(--s)">✅</button><button onclick="processLeave('${id}', ${l.id}, 'rejected')" class="action-icon" style="color:var(--d)">❌</button></div></div>`; 
+                }});
+            }
+        } 
+        document.getElementById('mgrLeaveRequests').innerHTML = h || "<small>لا يوجد طلبات معلقة</small>"; 
+    }
+
+    function processLeave(eid, lid, stat) { let e = db.emps[eid]; let l = e.leaves.find(x => x.id === lid); if(l) { l.status = stat; saveDB(); drawMgrLeaves(); } }
+    function toggleInstallmentField() { document.getElementById('installAmount').style.display = (document.getElementById('moneyType').value === 'installment' ? 'block' : 'none'); }
+    
+    function addFinancial() { 
+        let e = db.emps[curId]; let amt = parseFloat(document.getElementById('moneyAmount').value); 
+        let type = document.getElementById('moneyType').value; let reason = document.getElementById('moneyReason').value; 
+        if(!amt) return; 
+        const now = new Date();
+        const fullDateTime = now.toLocaleDateString('ar-EG') + " - " + now.toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+        if(type === 'installment') { 
+            let inst = parseFloat(document.getElementById('installAmount').value); if(!inst) return; 
+            if(!e.debts) e.debts = []; e.debts.push({ id: Date.now(), total: amt, remaining: amt, installment: inst, reason: reason || "سلفة", date: fullDateTime }); 
+        } else { 
+            if(!e.finance) e.finance = []; e.finance.unshift({ amount: (type==='bonus'?amt:-amt), reason: reason || type, date: fullDateTime, isPaid: false }); 
+        } 
+        saveDB(); document.getElementById('moneyAmount').value=""; drawLogs(); showToast("تم تسجيل العملية بنجاح", "s"); 
+    }
+
+    function drawLogs() { 
+        let e = db.emps[curId]; if(!e) return; 
+        let curMin = 0, curFin = 0, hL = "", hF = "", hD = ""; 
+        if(e.logs) { e.logs.forEach((l, i) => { if(l.isPaid) return; let n = l.type==='إكسل'?Math.max(0, l.m-(e.off||0)):l.m; curMin += n; hL += `<div class=\"log-card-big\"><div style=\"display:flex; justify-content:space-between; align-items:center;\"><b>${Math.floor(n/60)}س ${Math.round(n%60)}د</b><button onclick=\"db.emps['${curId}'].logs.splice(${i},1);saveDB();drawLogs();\" class=\"action-icon\" style=\"color:var(--d)\">🗑️</button></div><small>${l.d} (${l.type})</small></div>`; }); }
+        if(e.finance) { e.finance.forEach((f,i) => { if(f.isPaid) return; curFin += f.amount; hF += `<div class=\"money-log\" style=\"border-right-color:${f.amount>0?'var(--s)':'var(--d)'}\"><div style="display:flex; flex-direction:column;"><span>${f.amount > 0 ? '+' : ''}${f.amount.toLocaleString()} | ${f.reason}</span><small style="font-size:10px; color:#94a3b8;">📅 ${f.date || '---'}</small></div><button onclick=\"db.emps['${curId}'].finance.splice(${i},1);saveDB();drawLogs();\" class=\"action-icon\" style=\"color:var(--d)\">🗑️</button></div>`; }); }
+        if(e.debts) e.debts.forEach(d => { if(d.remaining > 0) hD += `<div class="archive-item">💰 ${d.reason}: ${d.remaining.toLocaleString()}</div>`; }); 
+        document.getElementById('logsBox').innerHTML = hL || "<p style='text-align:center; color:gray; font-size:12px;'>لا توجد سجلات لعرضها</p>"; 
+        document.getElementById('financialLogs').innerHTML = hF; 
+        document.getElementById('activeDebtsBox').innerHTML = hD; 
+        let tot = (curMin/60)*(e.rate||0) + curFin; 
+        document.getElementById('fTime').innerText = Math.floor(curMin/60)+"س "+Math.round(curMin%60)+"د"; 
+        document.getElementById('fMoney').innerText = Math.floor(tot).toLocaleString()+" د.ع"; 
+    }
+
+    function settleAccount() { 
+        let e = db.emps[curId]; let curMin = 0, curFin = 0; 
+        if(e.logs) e.logs.forEach(l => { if(!l.isPaid) curMin += (l.type==='إكسل'?Math.max(0, l.m-(e.off||0)):l.m); }); 
+        if(e.finance) e.finance.forEach(f => { if(!f.isPaid) curFin += f.amount; }); 
+        let base = (curMin/60)*(e.rate||0) + curFin; let inst = 0; 
+        if(e.debts) e.debts.forEach(d => { if(d.remaining > 0) inst += Math.min(d.remaining, d.installment); }); 
+        let final = base - inst; 
+        if(confirm(`تصفية الحساب؟ الصافي النهائي للدفع: ${Math.floor(final).toLocaleString()}`)){ 
+            if(e.debts) e.debts.forEach(d => { if(d.remaining > 0) d.remaining -= Math.min(d.remaining, d.installment); }); 
+            if(!e.archive) e.archive = []; e.archive.unshift({ date: new Date().toLocaleDateString('ar-EG'), amount: Math.floor(final) }); 
+            lastSettleMsg = `كشف راتب: ${e.name} | صافي المستحقات: ${Math.floor(final).toLocaleString()} د.ع`; 
+            document.getElementById('waBtn').style.display = 'flex'; 
+            if(e.logs) e.logs.forEach(l => l.isPaid = true); if(e.finance) e.finance.forEach(f => f.isPaid = true); 
+            saveDB(); refreshDash(); 
+        } 
+    }
+
+    function sendWhatsApp() { window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(lastSettleMsg)); }
+    function drawMgrEmps() { 
+        let h = ""; for(let id in db.emps) { h += `<div class="emp-item"><span onclick="selectFromMgr('${id}')" style="cursor:pointer; font-weight:600;">👤 ${db.emps[id].name}</span><div style="display:flex; gap:8px;"><button onclick="openEditModal('${id}')" class="action-icon" style="color:var(--p);">✏️</button><button onclick="if(confirm('حذف؟')){delete db.emps['${id}']; saveDB(); drawMgrEmps();}" class="action-icon" style="color:var(--d);">🗑️</button></div></div>`; } 
+        document.getElementById('mgrEmpList').innerHTML = h; 
+    }
+
+    function openEditModal(id) { editingEmpId = id; document.getElementById('editEmpNameInp').value = db.emps[id].name; document.getElementById('editEmpModal').style.display = 'flex'; }
+    function closeEditModal() { document.getElementById('editEmpModal').style.display = 'none'; }
+    function saveNewEmpName() { let n = document.getElementById('editEmpNameInp').value.trim(); if(n && editingEmpId) { db.emps[editingEmpId].name = n; saveDB(); drawMgrEmps(); drawSelection(); closeEditModal(); } }
+
+    function selectFromMgr(id) { curId = id; closeMgr(); selectEmp(id); }
+    function updateSettings() { if(!curId) return; let e = db.emps[curId]; e.rate = document.getElementById('rateInp').value; e.off = document.getElementById('offInp').value; e.workStartTime = document.getElementById('empWorkStart').value; e.latePenalty = document.getElementById('empLatePenalty').value; e.empPin = document.getElementById('empPinInp').value; saveDB(); drawLogs(); }
+    
+    function previewLogo(i) { if (i.files && i.files[0]) { let r = new FileReader(); r.onload = e => { db.config.logo = e.target.result; saveDB(); applyUI(); }; r.readAsDataURL(i.files[0]); } }
+    function confirmAndSave() { db.config.name = document.getElementById('nameInp').value; saveDB(); applyUI(); showToast("تم حفظ الإعدادات", "s"); }
+    function backupData() { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(db)], { type: "application/json" })); a.download = `Backup.json`; a.click(); }
+    function restoreData(i) { let r = new FileReader(); r.onload = e => { try { db = JSON.parse(e.target.result); saveDB(); location.reload(); } catch(err) { alert("خطأ"); } }; r.readAsText(i.files[0]); }
+    function drawArchive() { let e = db.emps[curId]; if(!e || !e.archive) return; let s = document.getElementById('archiveSearch').value; let h = ""; e.archive.forEach(i => { if (s==="" || i.date.includes(s)) h += `<div class="archive-item">📅 ${i.date}: <b>${i.amount.toLocaleString()} د.ع</b></div>`; }); document.getElementById('archiveBox').innerHTML = h; }
+    function exportToExcel() { const e = db.emps[curId]; let rows = [["التاريخ", "المدة", "النوع"]]; if(e.logs) e.logs.forEach(l => { if(!l.isPaid) rows.push([l.d, l.m, l.type]); }); const ws = XLSX.utils.aoa_to_sheet(rows); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Data"); XLSX.writeFile(wb, `${e.name}.xlsx`); }
+    function readExcel(inp) { let r = new FileReader(); r.onload = e => { let rs = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(e.target.result), {type:'array'}).Sheets[XLSX.read(new Uint8Array(e.target.result), {type:'array'}).SheetNames[0]]); rs.forEach(row => { let inT, outT; for(let k in row) { if(k.includes("دخول")) inT = row[k]; if(k.includes("خروج")) outT = row[k]; } if(inT && outT) { let diff = (new Date("2026/01/01 "+outT) - new Date("2026/01/01 "+inT)) / 60000; if(diff>0) { if(!db.emps[curId].logs) db.emps[curId].logs = []; db.emps[curId].logs.unshift({ m:diff, d:new Date().toLocaleDateString('ar-EG'), type:'إكسل', isPaid: false }); } } }); saveDB(); drawLogs(); showToast("تم الاستيراد", "s"); }; r.readAsArrayBuffer(inp.files[0]); }
+</script>
+</body>
+</html>
