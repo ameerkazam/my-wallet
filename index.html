@@ -161,7 +161,6 @@
             background: rgba(99, 102, 241, 0.05);
         }
 
-        /* إخفاء مربع اختيار الملف تماماً لجمالية الواجهة */
         #restoreFile {
             display: none !important;
             visibility: hidden !important;
@@ -287,7 +286,7 @@
             <div class="card">
                 <h3>ميزانية الأسبوع</h3>
                 <input type="number" id="budgetLimit" placeholder="حدد ميزانيتك" onchange="saveBudgetLimit(this.value)">
-                <button class="btn" style="margin-top:10px; background: #ffffff; color: var(--primary); border: 2px solid var(--primary);" onclick="downloadPDF()">تحميل تقرير PDF <i class="fas fa-file-pdf"></i></button>
+                <button class="btn" style="margin-top:10px; background: #ffffff; color: var(--primary); border: 2px solid var(--primary);" onclick="downloadPDF()">تحميل تقرير شامل PDF <i class="fas fa-file-pdf"></i></button>
             </div>
         </div>
 
@@ -296,6 +295,16 @@
                 <button class="btn" onclick="toggleDarkMode()">الوضع الليلي 🌙</button>
                 <button class="btn" onclick="openEditBrandModal()" style="margin-top:10px;">تخصيص الهوية 🎨</button>
                 
+                <div class="card" style="margin-top: 15px; border: 1px solid var(--primary); background: rgba(99, 102, 241, 0.05);">
+                    <h3 style="margin-top:0;">إدارة الأرشيف 📂</h3>
+                    <p style="font-size: 12px; opacity: 0.8;">احفظ أسبوعك الحالي واسترجعه بأي وقت</p>
+                    <button class="btn" onclick="archiveCurrentWeek()" style="background: var(--secondary); margin-bottom: 10px;">أرشفة الأسبوع الحالي 📥</button>
+                    <div style="display: flex; gap: 8px;">
+                        <select id="archiveDropdown" style="margin-bottom: 0; flex: 2; padding: 10px;"></select>
+                        <button class="btn" onclick="restoreFromArchive()" style="flex: 1; padding: 10px; font-size: 14px;">استرجاع</button>
+                    </div>
+                </div>
+
                 <div class="settings-grid">
                     <button class="btn" onclick="backupData()" style="background:#0891b2;">نسخة احتياطية 💾</button>
                     <button class="btn" onclick="triggerRestore()" style="background:#4f46e5;">استرجاع نسخة 📂</button>
@@ -334,7 +343,6 @@
     </div>
 
     <script>
-        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyA3pSsj-_9WoyczR42zFV_bpCUXddnatEw",
             authDomain: "mywallety-c8309.firebaseapp.com",
@@ -352,7 +360,6 @@
         let chart = null;
         const days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
-        // دوال المصادقة
         function handleAuth(type) {
             const email = document.getElementById('userInput').value;
             const password = document.getElementById('pinInput').value;
@@ -393,10 +400,14 @@
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+            const target = document.getElementById(tabId);
+            if(target) target.classList.add('active');
+            
             const btns = document.querySelectorAll('.tab-btn');
             btns.forEach(b => { if(b.getAttribute('onclick').includes(`'${tabId}'`)) b.classList.add('active'); });
+            
             if(tabId === 'reports') { renderChart(); updateAIAdvice(); }
+            if(tabId === 'settings') loadArchiveList();
         }
 
         function saveBudgetLimit(val) { appData.budgetLimit = parseInt(val) || 0; saveData(); }
@@ -438,49 +449,170 @@
             renderChart(); renderInstallments(); renderDebts(); renderVaultHistory();
         }
 
-        // دالة التحميل المصلحة بالكامل
+        function archiveCurrentWeek() {
+            if (!confirm("سيتم حفظ مصاريف الأيام الحالية في الأرشيف وتصفير الجدول. هل أنت موافق؟")) return;
+            const weekDate = new Date().toLocaleDateString('ar-EG').replace(/\//g, '-');
+            const archiveData = {};
+            days.forEach((_, i) => { if (appData[`day_${i}`]) archiveData[`day_${i}`] = appData[`day_${i}`]; });
+            if (Object.keys(archiveData).length === 0) return alert("لا توجد مصاريف لأرشفتها!");
+            db.ref('users/' + currentUser.uid + '/archives/' + weekDate).set(archiveData).then(() => {
+                days.forEach((_, i) => { appData[`day_${i}`] = []; });
+                saveData();
+                alert("تمت الأرشفة بنجاح باسم: " + weekDate);
+            });
+        }
+
+        function loadArchiveList() {
+            if (!currentUser) return;
+            db.ref('users/' + currentUser.uid + '/archives').once('value', snap => {
+                const archives = snap.val();
+                const dropdown = document.getElementById('archiveDropdown');
+                dropdown.innerHTML = '<option value="">اختر أسبوعاً...</option>';
+                if (archives) {
+                    Object.keys(archives).reverse().forEach(date => {
+                        const option = document.createElement('option');
+                        option.value = date;
+                        option.text = date;
+                        dropdown.appendChild(option);
+                    });
+                }
+            });
+        }
+
+        function restoreFromArchive() {
+            const selectedDate = document.getElementById('archiveDropdown').value;
+            if (!selectedDate) return alert("يرجى اختيار تاريخ");
+            if (!confirm("سيتم استبدال مصاريف الجدول ببيانات الأرشيف. هل تود الاستمرار؟")) return;
+            db.ref('users/' + currentUser.uid + '/archives/' + selectedDate).once('value', snap => {
+                const archivedWeek = snap.val();
+                if (archivedWeek) {
+                    days.forEach((_, i) => { appData[`day_${i}`] = archivedWeek[`day_${i}`] || []; });
+                    saveData();
+                    switchTab('daily');
+                    alert("تم استرجاع بيانات " + selectedDate);
+                }
+            });
+        }
+
+        // --- دالة تحميل الـ PDF الشاملة والمحدثة ---
         function downloadPDF() {
-            const element = document.getElementById('captureArea');
             const btn = event.target;
             const originalText = btn.innerHTML;
-            
             btn.innerHTML = "جاري التحضير... <i class='fas fa-spinner fa-spin'></i>";
             btn.disabled = true;
 
-            // خيارات التحميل المتوافقة مع الموبايل
+            // بناء عنصر مؤقت للتقرير
+            const reportElement = document.createElement('div');
+            reportElement.style.padding = '30px';
+            reportElement.style.fontFamily = "'Tajawal', sans-serif";
+            reportElement.style.direction = 'rtl';
+            reportElement.style.background = '#fff';
+            reportElement.style.color = '#1e293b';
+
+            let weeklyTotal = 0;
+            days.forEach((_, i) => {
+                const items = appData[`day_${i}`] || [];
+                weeklyTotal += items.reduce((sum, item) => sum + item.price, 0);
+            });
+
+            reportElement.innerHTML = `
+                <div style="text-align: center; border-bottom: 3px solid #6366f1; padding-bottom: 15px; margin-bottom: 25px;">
+                    <h1 style="margin: 0; color: #6366f1;">${appData.customAppName || 'مصاريفي Pro'}</h1>
+                    <h3 style="margin: 5px 0; opacity: 0.7;">تقرير مالي شامل</h3>
+                    <p style="font-size: 12px;">تاريخ الاستخراج: ${new Date().toLocaleString('ar-EG')}</p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0;">
+                        <span style="font-size: 14px; color: #64748b;">إجمالي مصاريف الأسبوع</span>
+                        <div style="font-size: 22px; font-weight: 900; color: #6366f1; margin-top: 5px;">${weeklyTotal.toLocaleString()} د.ع</div>
+                    </div>
+                    <div style="background: #ecfdf5; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #d1fae5;">
+                        <span style="font-size: 14px; color: #065f46;">رصيد الخزنة الحالي</span>
+                        <div style="font-size: 22px; font-weight: 900; color: #10b981; margin-top: 5px;">${(appData.vault || 0).toLocaleString()} د.ع</div>
+                    </div>
+                </div>
+
+                <h3 style="border-right: 5px solid #6366f1; padding-right: 10px; margin-bottom: 15px;">📊 تفاصيل المصاريف اليومية</h3>
+                ${days.map((day, i) => {
+                    const items = appData[`day_${i}`] || [];
+                    if (items.length === 0) return '';
+                    return `
+                        <div style="margin-bottom: 15px;">
+                            <div style="background: #f8fafc; padding: 8px 12px; font-weight: bold; border-radius: 8px;">${day}</div>
+                            <table style="width: 100%; border-collapse: collapse; margin-top: 5px;">
+                                ${items.map(item => `
+                                    <tr>
+                                        <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; font-size: 14px;">${item.name} <small style="color: #64748b;">(${item.category || 'عام'})</small></td>
+                                        <td style="padding: 8px; border-bottom: 1px solid #f1f5f9; text-align: left; font-weight: bold;">${item.price.toLocaleString()} د.ع</td>
+                                    </tr>
+                                `).join('')}
+                            </table>
+                        </div>
+                    `;
+                }).join('')}
+
+                <h3 style="border-right: 5px solid #8b5cf6; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">🗓️ حالة الأقساط</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: #f8fafc;">
+                        <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e2e8f0;">البيان</th>
+                        <th style="padding: 10px; text-align: right; border-bottom: 2px solid #e2e8f0;">المبلغ الكلي</th>
+                        <th style="padding: 10px; text-align: left; border-bottom: 2px solid #e2e8f0;">المدفوع حتى الآن</th>
+                    </tr>
+                    ${(appData.installments || []).map(inst => `
+                        <tr>
+                            <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">${inst.name}</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #f1f5f9;">${inst.total.toLocaleString()} د.ع</td>
+                            <td style="padding: 10px; border-bottom: 1px solid #f1f5f9; text-align: left; color: #10b981; font-weight: bold;">${inst.paid.toLocaleString()} د.ع</td>
+                        </tr>
+                    `).join('')}
+                </table>
+
+                <h3 style="border-right: 5px solid #f59e0b; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">🤝 سجل الديون</h3>
+                <div style="display: flex; gap: 20px;">
+                    <div style="flex: 1; border: 1px solid #fee2e2; border-radius: 12px; padding: 10px;">
+                        <div style="color: #ef4444; font-weight: bold; margin-bottom: 10px;">ديون بذمتي (عليّ) 🚩</div>
+                        ${(appData.debt_debt || []).map(d => `<div style="font-size: 13px; border-bottom: 1px solid #f1f5f9; padding: 5px 0;">${d.person}: <b>${d.amount.toLocaleString()} د.ع</b></div>`).join('') || '<div style="font-size:12px; opacity:0.5;">لا يوجد</div>'}
+                    </div>
+                    <div style="flex: 1; border: 1px solid #dcfce7; border-radius: 12px; padding: 10px;">
+                        <div style="color: #10b981; font-weight: bold; margin-bottom: 10px;">ديون مستحقة (لي) ✅</div>
+                        ${(appData.debt_credit || []).map(d => `<div style="font-size: 13px; border-bottom: 1px solid #f1f5f9; padding: 5px 0;">${d.person}: <b>${d.amount.toLocaleString()} د.ع</b></div>`).join('') || '<div style="font-size:12px; opacity:0.5;">لا يوجد</div>'}
+                    </div>
+                </div>
+
+                <h3 style="border-right: 5px solid #10b981; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">💰 سجل حركات الخزنة (الأخيرة)</h3>
+                <div style="font-size: 12px;">
+                    ${(appData.vaultLogs || []).slice(0, 10).map(log => `
+                        <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #e2e8f0;">
+                            <span>${log.date} - ${log.type}</span>
+                            <span style="color: ${log.isAdd ? '#10b981' : '#ef4444'}; font-weight: bold;">${log.isAdd ? '+' : '-'}${log.amount.toLocaleString()} د.ع</span>
+                        </div>
+                    `).join('') || 'لا توجد حركات'}
+                </div>
+
+                <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+                    تم إنشاء هذا التقرير تلقائياً بواسطة نظام مصاريفي Pro الذكي
+                </div>
+            `;
+
             const opt = {
-                margin: 0.2,
-                filename: `تقرير_مصاريفي_${new Date().toLocaleDateString('ar-EG')}.pdf`,
+                margin: 0.3,
+                filename: `تقرير_مصاريفي_الشامل_${new Date().toLocaleDateString('ar-EG')}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { 
-                    scale: 2, 
-                    useCORS: true, 
-                    letterRendering: true,
-                    scrollY: 0
-                },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
                 jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
 
-            // إخفاء الأزرار مؤقتاً لجمالية التقرير
-            const componentsToHide = document.querySelectorAll('.btn, .tab-btn, .settings-icon, input, select');
-            componentsToHide.forEach(el => el.style.visibility = 'hidden');
-
-            // تنفيذ التحميل مع تأخير بسيط لضمان المعالجة
-            setTimeout(() => {
-                html2pdf().set(opt).from(element).save().then(() => {
-                    componentsToHide.forEach(el => el.style.visibility = 'visible');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }).catch(err => {
-                    alert("عذراً، حدث خطأ أثناء التحميل. يرجى المحاولة مرة أخرى.");
-                    componentsToHide.forEach(el => el.style.visibility = 'visible');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                });
-            }, 800);
+            html2pdf().set(opt).from(reportElement).save().then(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                alert("خطأ في التحميل");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
         }
 
-        // بقية الدوال البرمجية (Chart, Vault, Debt, Settings, etc.)
         function renderChart() {
             const ctx = document.getElementById('expenseChart');
             if (!ctx) return;
@@ -583,11 +715,8 @@
         }
 
         function toggleDarkMode() { document.body.classList.toggle('dark-mode'); appData.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light'; saveData(); }
-
         function toggleDay(header) { const container = header.nextElementSibling; container.classList.toggle('open'); }
-
         function toggleVaultHistory() { const container = document.getElementById('vaultHistoryContainer'); container.classList.toggle('open'); }
-
         function logout() { auth.signOut().then(() => location.reload()); }
 
         function openEditBrandModal() { 
@@ -616,12 +745,18 @@
         }
 
         function triggerRestore() { document.getElementById('restoreFile').click(); }
-
         function restoreData(event) {
             const file = event.target.files[0];
             const reader = new FileReader();
             reader.onload = function(e) { appData = JSON.parse(e.target.result); saveData(); location.reload(); };
             reader.readAsText(file);
+        }
+
+        function resetWeek() {
+            if(confirm("هل أنت متأكد من تصفير الأسبوع؟ (يمكنك الأرشفة أولاً من الإعدادات)")) {
+                days.forEach((_, i) => { appData[`day_${i}`] = []; });
+                saveData();
+            }
         }
 
         function updateAIAdvice() {
