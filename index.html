@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مصاريفي Pro - النسخة المتكاملة</title>
+    <title>مصاريفي Pro - النسخة المتطورة</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
@@ -167,6 +167,14 @@
             height: 0; width: 0;
             position: absolute;
         }
+
+        .inst-status-tag {
+            font-size: 10px; padding: 2px 8px; border-radius: 20px; font-weight: bold;
+        }
+        .inst-due-warning { border: 2px solid #ef4444 !important; animation: pulse-border 2s infinite; }
+        @keyframes pulse-border { 0% { border-color: #ef4444; } 50% { border-color: transparent; } 100% { border-color: #ef4444; } }
+        
+        .payment-history-list { font-size: 11px; margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 5px; }
     </style>
 </head>
 <body>
@@ -179,8 +187,8 @@
     </div>
 
     <div id="lockScreen" class="lock-screen">
-        <h1 style="font-size: 50px; margin-bottom: 10px;">💎</h1>
-        <h2>أهلاً بك في مصاريفي Pro</h2>
+        <h1 id="lockAppLogo" style="font-size: 50px; margin-bottom: 10px;">💎</h1>
+        <h2 id="lockAppName">أهلاً بك في مصاريفي Pro</h2>
         <div style="width: 80%; max-width: 350px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 20px; backdrop-filter: blur(10px);">
             <input type="email" id="userInput" placeholder="البريد الإلكتروني">
             <input type="password" id="pinInput" placeholder="كلمة السر">
@@ -229,12 +237,15 @@
         </div>
 
         <div id="vault" class="section">
-            <div class="card">
+            <div class="card" style="text-align: center;">
                 <h3>الخزنة الشخصية 💰</h3>
-                <input type="number" id="vaultAmount" placeholder="المبلغ">
-                <button class="btn btn-success" onclick="updateVault(true)">إضافة للخزنة 📥</button>
-                <button class="btn btn-danger" onclick="updateVault(false)" style="margin-top:10px;">سحب من الخزنة 📤</button>
-                <div class="total-badge" id="vaultDisplay" style="color: #10b981;">0 د.ع</div>
+                <div class="total-badge" id="vaultDisplay" style="color: #10b981; margin-top: 5px;">0 د.ع</div>
+                <hr style="opacity: 0.1; margin: 15px 0;">
+                <input type="number" id="vaultAmount" placeholder="أدخل المبلغ هنا">
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-success" onclick="updateVault(true)" style="flex: 1;">إيداع في الخزنة 📥</button>
+                    <button class="btn btn-danger" onclick="updateVault(false)" style="flex: 1;">سحب من الخزنة 📤</button>
+                </div>
             </div>
             <div class="day-card">
                 <div class="day-header" onclick="toggleVaultHistory()">
@@ -243,6 +254,9 @@
                 </div>
                 <div id="vaultHistoryContainer" class="items-container">
                     <div id="vaultHistory" style="padding: 10px;"></div>
+                    <div style="padding: 10px;">
+                        <button class="btn btn-outline" style="color: #ef4444; border-color: #ef4444; font-size: 13px;" onclick="clearVaultLogs()">مسح سجل الحركات 🗑️</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -253,19 +267,36 @@
                 <input type="text" id="instName" placeholder="اسم القسط">
                 <input type="number" id="instTotal" placeholder="المبلغ الكلي">
                 <input type="number" id="instMonthly" placeholder="القسط الشهري">
+                <input type="number" id="instDueDate" placeholder="يوم الاستحقاق (1-31)" min="1" max="31">
                 <button class="btn" onclick="addInstallment()">إضافة قسط جديد ➕</button>
             </div>
             <div id="instList"></div>
         </div>
 
         <div id="debt" class="section">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div class="card" style="margin-bottom:0; padding: 15px; text-align: center; border-right: 5px solid #10b981;">
+                    <small style="color: #10b981; font-weight: bold;">أطلب الناس (لي) ✅</small>
+                    <div id="totalCreditDisplay" style="font-size: 18px; font-weight: 900; margin-top: 5px;">0 د.ع</div>
+                </div>
+                <div class="card" style="margin-bottom:0; padding: 15px; text-align: center; border-right: 5px solid #ef4444;">
+                    <small style="color: #ef4444; font-weight: bold;">مطلوب للناس (عليّ) 🚩</small>
+                    <div id="totalDebtDisplay" style="font-size: 18px; font-weight: 900; margin-top: 5px;">0 د.ع</div>
+                </div>
+            </div>
+
             <div class="card">
-                <h3>الديون 🤝</h3>
-                <select id="debtType"><option value="debt">عليّ 🚩</option><option value="credit">لي ✅</option></select>
+                <h3 style="margin-top:0;">تسجيل دين جديد 🤝</h3>
+                <select id="debtType">
+                    <option value="credit">لي (أطلب شخص) ✅</option>
+                    <option value="debt">عليّ (مطلوب لشخص) 🚩</option>
+                </select>
                 <input type="text" id="debtPerson" placeholder="اسم الشخص">
+                <input type="text" id="debtNote" placeholder="بسبب شنو؟ (اختياري)">
                 <input type="number" id="debtAmount" placeholder="المبلغ">
                 <button class="btn" onclick="addDebt()">تسجيل الدين 📝</button>
             </div>
+            
             <div class="filter-container">
                 <button class="filter-btn active" id="btnFilterAll" onclick="renderDebts('all')">الكل</button>
                 <button class="filter-btn" id="btnFilterDebt" onclick="renderDebts('debt')">عليّ 🚩</button>
@@ -285,6 +316,7 @@
 
             <div class="card">
                 <h3>ميزانية الأسبوع</h3>
+                <p style="font-size: 12px; opacity: 0.7; margin-bottom: 10px;">حدد المبلغ الذي تنوي صرفه هذا الأسبوع للمراقبة</p>
                 <input type="number" id="budgetLimit" placeholder="حدد ميزانيتك" onchange="saveBudgetLimit(this.value)">
                 <button class="btn" style="margin-top:10px; background: #ffffff; color: var(--primary); border: 2px solid var(--primary);" onclick="downloadPDF()">تحميل تقرير شامل PDF <i class="fas fa-file-pdf"></i></button>
             </div>
@@ -368,6 +400,7 @@
             else auth.createUserWithEmailAndPassword(email, password).catch(e => alert(e.message));
         }
 
+        // تحسين مراقبة الجلسة لتحديث واجهة تسجيل الدخول أيضاً
         auth.onAuthStateChanged(user => {
             if (user) {
                 currentUser = user;
@@ -376,6 +409,12 @@
                     initApp();
                 });
             } else {
+                // إذا لم يكن هناك مستخدم، حاول جلب آخر هوية مستخدمة من التخزين المحلي (كخيار احتياطي للجمالية)
+                const localName = localStorage.getItem('lastAppName') || "مصاريفي Pro";
+                const localLogo = localStorage.getItem('lastAppLogo') || "💎";
+                document.getElementById('lockAppName').innerText = `أهلاً بك في ${localName}`;
+                document.getElementById('lockAppLogo').innerText = localLogo;
+                
                 document.getElementById('lockScreen').style.display = 'flex';
                 document.querySelector('.app-container').style.display = 'none';
                 document.getElementById('mainTaskbar').style.display = 'none';
@@ -386,17 +425,32 @@
             document.getElementById('lockScreen').style.display = 'none';
             document.querySelector('.app-container').style.display = 'block';
             document.getElementById('mainTaskbar').style.display = 'flex';
+            
             if (appData.theme === 'dark') document.body.classList.add('dark-mode');
             if (appData.userC1 && appData.userC2) {
                 document.documentElement.style.setProperty('--primary', appData.userC1);
                 document.documentElement.style.setProperty('--secondary', appData.userC2);
             }
-            document.getElementById('appNameDisplay').innerText = appData.customAppName || "مصاريفي Pro";
-            document.getElementById('appLogo').innerText = appData.customAppLogo || "💎";
+
+            // تحديث الهوية في واجهة التطبيق وشاشة القفل
+            const name = appData.customAppName || "مصاريفي Pro";
+            const logo = appData.customAppLogo || "💎";
+            
+            document.getElementById('appNameDisplay').innerText = name;
+            document.getElementById('appLogo').innerText = logo;
+            document.getElementById('lockAppName').innerText = `أهلاً بك في ${name}`;
+            document.getElementById('lockAppLogo').innerText = logo;
+            
+            // حفظها محلياً لتظهر حتى قبل تسجيل الدخول في المرة القادمة
+            localStorage.setItem('lastAppName', name);
+            localStorage.setItem('lastAppLogo', logo);
+
             document.getElementById('budgetLimit').value = appData.budgetLimit || "";
             updateUI();
         }
 
+        // --- باقي الوظائف الأصلية دون أي حذف ---
+        
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -443,9 +497,9 @@
             const status = document.getElementById('budgetStatus');
             if (limit > 0) {
                 const diff = limit - weeklyTotal;
-                status.innerText = diff >= 0 ? `باقي: ${diff.toLocaleString()} د.ع` : `تجاوزت بـ: ${Math.abs(diff).toLocaleString()} د.ع`;
+                status.innerText = diff >= 0 ? `باقي من الميزانية: ${diff.toLocaleString()} د.ع` : `تجاوزت الميزانية بـ: ${Math.abs(diff).toLocaleString()} د.ع`;
                 status.style.color = diff >= 0 ? '#10b981' : '#ef4444';
-            } else { status.innerText = "لم يتم تحديد ميزانية بعد"; status.style.color = "gray"; }
+            } else { status.innerText = "لم يتم تحديد ميزانية أسبوعية للمراقبة"; status.style.color = "gray"; }
             renderChart(); renderInstallments(); renderDebts(); renderVaultHistory();
         }
 
@@ -494,14 +548,12 @@
             });
         }
 
-        // --- دالة تحميل الـ PDF الشاملة والمحدثة ---
         function downloadPDF() {
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = "جاري التحضير... <i class='fas fa-spinner fa-spin'></i>";
             btn.disabled = true;
 
-            // بناء عنصر مؤقت للتقرير
             const reportElement = document.createElement('div');
             reportElement.style.padding = '30px';
             reportElement.style.fontFamily = "'Tajawal', sans-serif";
@@ -521,7 +573,6 @@
                     <h3 style="margin: 5px 0; opacity: 0.7;">تقرير مالي شامل</h3>
                     <p style="font-size: 12px;">تاريخ الاستخراج: ${new Date().toLocaleString('ar-EG')}</p>
                 </div>
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
                     <div style="background: #f1f5f9; padding: 15px; border-radius: 15px; text-align: center; border: 1px solid #e2e8f0;">
                         <span style="font-size: 14px; color: #64748b;">إجمالي مصاريف الأسبوع</span>
@@ -532,7 +583,6 @@
                         <div style="font-size: 22px; font-weight: 900; color: #10b981; margin-top: 5px;">${(appData.vault || 0).toLocaleString()} د.ع</div>
                     </div>
                 </div>
-
                 <h3 style="border-right: 5px solid #6366f1; padding-right: 10px; margin-bottom: 15px;">📊 تفاصيل المصاريف اليومية</h3>
                 ${days.map((day, i) => {
                     const items = appData[`day_${i}`] || [];
@@ -551,7 +601,6 @@
                         </div>
                     `;
                 }).join('')}
-
                 <h3 style="border-right: 5px solid #8b5cf6; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">🗓️ حالة الأقساط</h3>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr style="background: #f8fafc;">
@@ -567,7 +616,6 @@
                         </tr>
                     `).join('')}
                 </table>
-
                 <h3 style="border-right: 5px solid #f59e0b; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">🤝 سجل الديون</h3>
                 <div style="display: flex; gap: 20px;">
                     <div style="flex: 1; border: 1px solid #fee2e2; border-radius: 12px; padding: 10px;">
@@ -579,17 +627,6 @@
                         ${(appData.debt_credit || []).map(d => `<div style="font-size: 13px; border-bottom: 1px solid #f1f5f9; padding: 5px 0;">${d.person}: <b>${d.amount.toLocaleString()} د.ع</b></div>`).join('') || '<div style="font-size:12px; opacity:0.5;">لا يوجد</div>'}
                     </div>
                 </div>
-
-                <h3 style="border-right: 5px solid #10b981; padding-right: 10px; margin-bottom: 15px; margin-top: 30px;">💰 سجل حركات الخزنة (الأخيرة)</h3>
-                <div style="font-size: 12px;">
-                    ${(appData.vaultLogs || []).slice(0, 10).map(log => `
-                        <div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #e2e8f0;">
-                            <span>${log.date} - ${log.type}</span>
-                            <span style="color: ${log.isAdd ? '#10b981' : '#ef4444'}; font-weight: bold;">${log.isAdd ? '+' : '-'}${log.amount.toLocaleString()} د.ع</span>
-                        </div>
-                    `).join('') || 'لا توجد حركات'}
-                </div>
-
                 <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 10px;">
                     تم إنشاء هذا التقرير تلقائياً بواسطة نظام مصاريفي Pro الذكي
                 </div>
@@ -633,12 +670,24 @@
 
         function updateVault(isAdd) {
             const amt = parseInt(document.getElementById('vaultAmount').value);
-            if (!amt || amt <= 0) return;
+            if (!amt || amt <= 0) return alert("يرجى إدخال مبلغ صحيح");
+            if (!isAdd && amt > (appData.vault || 0)) return alert("لا يوجد رصيد كافي في الخزنة للسحب!");
+            
             appData.vault = (appData.vault || 0) + (isAdd ? amt : -amt);
-            if (!appData.vaultLogs) appData.vaultLogs = [];
-            appData.vaultLogs.unshift({ id: Date.now(), type: isAdd ? 'إضافة' : 'سحب', amount: amt, date: new Date().toLocaleString('ar-EG', {hour:'2-digit', minute:'2-digit'}), isAdd: isAdd });
+            addVaultLog(isAdd ? 'إيداع نقدي' : 'سحب نقدي', amt, isAdd);
             document.getElementById('vaultAmount').value = '';
             saveData();
+        }
+
+        function addVaultLog(type, amount, isAdd) {
+            if (!appData.vaultLogs) appData.vaultLogs = [];
+            appData.vaultLogs.unshift({ 
+                id: Date.now(), 
+                type: type, 
+                amount: amount, 
+                date: new Date().toLocaleString('ar-EG', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}), 
+                isAdd: isAdd 
+            });
         }
 
         function renderVaultHistory() {
@@ -647,64 +696,202 @@
             histCont.innerHTML = appData.vaultLogs.map(log => `<div class="item-row" style="border-right: 4px solid ${log.isAdd ? '#10b981' : '#ef4444'};"><div style="display:flex; flex-direction:column; align-items:start;"><span style="font-weight:bold;">${log.type}</span><small style="opacity:0.6; font-size:11px;">${log.date}</small></div><b style="color:${log.isAdd ? '#10b981' : '#ef4444'}">${log.isAdd ? '+' : '-'}${log.amount.toLocaleString()}</b></div>`).join('');
         }
 
+        function clearVaultLogs() {
+            if(confirm("هل أنت متأكد من مسح سجل الحركات؟ (لن يتأثر الرصيد الحالي)")) {
+                appData.vaultLogs = [];
+                saveData();
+            }
+        }
+
         function addItem() {
             const dayIdx = document.getElementById('daySelect').value;
             const name = document.getElementById('itemName').value;
             const price = parseInt(document.getElementById('itemPrice').value);
             const category = document.getElementById('itemCategory').value;
             if (!name || !price) return;
+
+            const useVault = confirm(`هل تريد خصم مبلغ (${price.toLocaleString()} د.ع) من الخزنة مباشرة؟`);
+            
+            if (useVault) {
+                if ((appData.vault || 0) < price) {
+                    alert("رصيد الخزنة غير كافٍ! سيتم تسجيل المصروف في الجدول فقط.");
+                } else {
+                    appData.vault -= price;
+                    addVaultLog(`شراء: ${name}`, price, false);
+                }
+            }
+
             if (!appData[`day_${dayIdx}`]) appData[`day_${dayIdx}`] = [];
-            appData[`day_${dayIdx}`].push({ name, price, category, id: Date.now() });
+            appData[`day_${dayIdx}`].push({ name, price, category, id: Date.now(), fromVault: useVault });
             saveData();
             document.getElementById('itemName').value = ''; document.getElementById('itemPrice').value = '';
         }
 
-        function deleteItem(dayIdx, id) { appData[`day_${dayIdx}`] = appData[`day_${dayIdx}`].filter(item => item.id !== id); saveData(); }
+        function deleteItem(dayIdx, id) { 
+            const item = appData[`day_${dayIdx}`].find(i => i.id === id);
+            if (item && item.fromVault) {
+                if (confirm("هذا المصروف تم خصمه من الخزنة، هل تريد استرجاع المبلغ للخزنة عند الحذف؟")) {
+                    appData.vault += item.price;
+                    addVaultLog(`استرجاع حذف: ${item.name}`, item.price, true);
+                }
+            }
+            appData[`day_${dayIdx}`] = appData[`day_${dayIdx}`].filter(item => item.id !== id); 
+            saveData(); 
+        }
 
         function addInstallment() {
             const name = document.getElementById('instName').value;
             const total = parseInt(document.getElementById('instTotal').value);
             const monthly = parseInt(document.getElementById('instMonthly').value);
-            if (!name || !total || !monthly) return alert("يرجى ملء كافة الحقول");
+            const dueDate = parseInt(document.getElementById('instDueDate').value);
+            if (!name || !total || !monthly || !dueDate) return alert("يرجى ملء كافة الحقول");
             if (!appData.installments) appData.installments = [];
-            appData.installments.push({ name, total, monthly, paid: 0, id: Date.now() });
+            appData.installments.push({ name, total, monthly, dueDate, paid: 0, history: [], id: Date.now() });
             saveData();
-            document.getElementById('instName').value = ''; document.getElementById('instTotal').value = ''; document.getElementById('instMonthly').value = '';
+            document.getElementById('instName').value = ''; document.getElementById('instTotal').value = ''; document.getElementById('instMonthly').value = ''; document.getElementById('instDueDate').value = '';
         }
 
         function payInstallment(id) {
             const inst = appData.installments.find(i => i.id === id);
-            if (inst) { inst.paid = Math.min(inst.total, inst.paid + inst.monthly); saveData(); }
+            if (!inst) return;
+            const mode = confirm("هل تريد خصم مبلغ القسط من الخزنة مباشرة؟\nإلغاء = تسجيله كدفعة فقط دون المساس بالخزنة");
+            if (mode) {
+                if ((appData.vault || 0) < inst.monthly) return alert("رصيد الخزنة غير كافٍ لدفع هذا القسط!");
+                appData.vault -= inst.monthly;
+                addVaultLog(`دفع قسط (${inst.name})`, inst.monthly, false);
+            }
+            inst.paid = Math.min(inst.total, inst.paid + inst.monthly);
+            if(!inst.history) inst.history = [];
+            inst.history.unshift({ date: new Date().toLocaleDateString('ar-EG'), amount: inst.monthly, remaining: inst.total - inst.paid });
+            saveData();
         }
 
         function deleteInstallment(id) { if(confirm("حذف هذا القسط؟")) { appData.installments = appData.installments.filter(i => i.id !== id); saveData(); } }
 
         function renderInstallments() {
             const cont = document.getElementById('instList'); cont.innerHTML = '';
+            const today = new Date().getDate();
             (appData.installments || []).forEach(inst => {
                 const perc = (inst.paid / inst.total) * 100;
-                cont.innerHTML += `<div class="card"><div style="display:flex; justify-content:space-between;"><b>${inst.name}</b><button onclick="deleteInstallment(${inst.id})" style="background:none; border:none; color:red; cursor:pointer;">✕</button></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${perc}%"></div></div><div style="display:flex; justify-content:space-between; font-size:13px;"><span>المدفوع: ${inst.paid.toLocaleString()}</span><span>الكلي: ${inst.total.toLocaleString()}</span></div><button class="btn btn-success" style="margin-top:10px; padding:8px; font-size:14px;" ${inst.paid >= inst.total ? 'disabled' : ''} onclick="payInstallment(${inst.id})">${inst.paid >= inst.total ? 'تم التسديد ✅' : 'دفع القسط الشهري 💸'}</button></div>`;
+                const isCompleted = inst.paid >= inst.total;
+                const isOverdue = !isCompleted && today >= inst.dueDate;
+                const remainingMonths = Math.ceil((inst.total - inst.paid) / inst.monthly);
+                let statusText = isCompleted ? "مكتمل ✅" : (isOverdue ? "مستحق 🚩" : "منتظم ✨");
+                let statusColor = isCompleted ? "#10b981" : (isOverdue ? "#ef4444" : "#6366f1");
+                cont.innerHTML += `
+                    <div class="card ${isOverdue ? 'inst-due-warning' : ''}">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <b style="font-size:18px;">${inst.name}</b>
+                                <span class="inst-status-tag" style="background:${statusColor}20; color:${statusColor}">${statusText}</span>
+                            </div>
+                            <button onclick="deleteInstallment(${inst.id})" style="background:none; border:none; color:#ef4444; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <div style="font-size:12px; margin: 10px 0; opacity:0.8;">
+                            <i class="fas fa-calendar-day"></i> يوم الاستحقاق: <b>${inst.dueDate}</b> في الشهر
+                            ${!isCompleted ? ` | <i class="fas fa-hourglass-half"></i> باقي: <b>${remainingMonths} شهر</b>` : ''}
+                        </div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar-fill" style="width:${perc}%; background:${statusColor}"></div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700;">
+                            <span>المدفوع: ${inst.paid.toLocaleString()}</span>
+                            <span>الكلي: ${inst.total.toLocaleString()}</span>
+                        </div>
+                        <button class="btn" style="margin-top:10px; background:${isCompleted ? '#f1f5f9' : statusColor}; color:${isCompleted ? '#94a3b8' : 'white'};" 
+                            ${isCompleted ? 'disabled' : ''} onclick="payInstallment(${inst.id})">
+                            ${isCompleted ? 'تم التسديد بالكامل' : 'دفع القسط الشهري 💸'}
+                        </button>
+                        ${inst.history && inst.history.length > 0 ? `
+                        <div class="payment-history-list">
+                            <div style="font-weight:800; margin-bottom:5px;">سجل الدفعات الأخيرة:</div>
+                            ${inst.history.slice(0,2).map(h => `
+                                <div style="display:flex; justify-content:space-between; opacity:0.7;">
+                                    <span>📅 ${h.date}</span>
+                                    <span>💰 ${h.amount.toLocaleString()} (باقي: ${h.remaining.toLocaleString()})</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
+                    </div>`;
             });
         }
 
         function addDebt() {
             const type = document.getElementById('debtType').value;
             const person = document.getElementById('debtPerson').value;
+            const note = document.getElementById('debtNote').value || "بدون ملاحظة";
             const amt = parseInt(document.getElementById('debtAmount').value);
-            if (!person || !amt) return;
+            if (!person || !amt) return alert("يرجى إدخال الاسم والمبلغ");
             if (!appData[`debt_${type}`]) appData[`debt_${type}`] = [];
-            appData[`debt_${type}`].push({ person, amount: amt, id: Date.now() });
+            appData[`debt_${type}`].push({ person, amount: amt, note: note, date: new Date().toLocaleDateString('ar-EG'), id: Date.now() });
             saveData();
-            document.getElementById('debtPerson').value = ''; document.getElementById('debtAmount').value = '';
+            document.getElementById('debtPerson').value = ''; 
+            document.getElementById('debtAmount').value = '';
+            document.getElementById('debtNote').value = '';
         }
 
-        function deleteDebt(type, id) { appData[`debt_${type}`] = appData[`debt_${type}`].filter(d => d.id !== id); saveData(); }
+        function deleteDebt(type, id) { 
+            const debtItem = appData[`debt_${type}`].find(d => d.id === id);
+            if (!debtItem) return;
+
+            const confirmMsg = type === 'debt' 
+                ? `هل قمت بتسديد الدين لـ ${debtItem.person}؟\nموافق = خصم المبلغ من الخزنة وتسجيل التسديد\nإلغاء = تسجيل التسديد فقط دون المساس بالخزنة`
+                : `هل استلمت المبلغ من ${debtItem.person}؟\nموافق = إضافة المبلغ للخزنة وتسجيل التسديد\nإلغاء = تسجيل التسديد فقط دون المساس بالخزنة`;
+
+            const useVault = confirm(confirmMsg);
+
+            if (useVault) {
+                if (type === 'debt') {
+                    if ((appData.vault || 0) < debtItem.amount) {
+                        alert("رصيد الخزنة غير كافٍ لتسديد هذا الدين!");
+                        return;
+                    }
+                    appData.vault -= debtItem.amount;
+                    addVaultLog(`تسديد دين (${debtItem.person})`, debtItem.amount, false);
+                } else {
+                    appData.vault = (appData.vault || 0) + debtItem.amount;
+                    addVaultLog(`استلام دين من (${debtItem.person})`, debtItem.amount, true);
+                }
+            }
+
+            appData[`debt_${type}`] = appData[`debt_${type}`].filter(d => d.id !== id); 
+            saveData(); 
+        }
 
         function renderDebts(filter = 'all') {
-            const cont = document.getElementById('debtLists'); cont.innerHTML = '';
+            const cont = document.getElementById('debtLists'); 
+            cont.innerHTML = '';
+            let totalMe = (appData.debt_credit || []).reduce((s, d) => s + d.amount, 0);
+            let totalOnMe = (appData.debt_debt || []).reduce((s, d) => s + d.amount, 0);
+            const creditDisplay = document.getElementById('totalCreditDisplay');
+            const debtDisplay = document.getElementById('totalDebtDisplay');
+            if(creditDisplay) creditDisplay.innerText = totalMe.toLocaleString() + ' د.ع';
+            if(debtDisplay) debtDisplay.innerText = totalOnMe.toLocaleString() + ' د.ع';
+
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             if(filter === 'all') document.getElementById('btnFilterAll').classList.add('active');
-            const createCard = (d, type) => `<div class="item-row" style="border-right: 5px solid ${type === 'debt' ? '#ef4444' : '#10b981'};"><div style="display: flex; align-items: center; gap: 12px;"><div style="background: ${type === 'debt' ? '#fee2e2' : '#dcfce7'}; color: ${type === 'debt' ? '#ef4444' : '#10b981'}; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas ${type === 'debt' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i></div><div style="display: flex; flex-direction: column;"><span style="font-weight: 800;">${d.person}</span><small style="opacity: 0.6;">${type === 'debt' ? 'مطلوب لي' : 'أطلب منه'}</small></div></div><div style="display: flex; align-items: center; gap: 15px;"><b>${d.amount.toLocaleString()}</b><button onclick="deleteDebt('${type}', ${d.id})" style="background: #f1f5f9; border: none; color: #ef4444; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash-alt"></i></button></div></div>`;
+            if(filter === 'debt') document.getElementById('btnFilterDebt').classList.add('active');
+            if(filter === 'credit') document.getElementById('btnFilterCredit').classList.add('active');
+
+            const createCard = (d, type) => `
+                <div class="item-row" style="border-right: 5px solid ${type === 'debt' ? '#ef4444' : '#10b981'}; padding: 15px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="background: ${type === 'debt' ? '#fee2e2' : '#dcfce7'}; color: ${type === 'debt' ? '#ef4444' : '#10b981'}; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas ${type === 'debt' ? 'fa-hand-holding-dollar' : 'fa-hand-holding-heart'}"></i>
+                        </div>
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-weight: 800;">${d.person}</span>
+                            <small style="opacity: 0.7; font-size: 11px;">${d.note} | ${d.date || ''}</small>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <b style="color: ${type === 'debt' ? '#ef4444' : '#10b981'}">${d.amount.toLocaleString()}</b>
+                        <button onclick="deleteDebt('${type}', ${d.id})" style="background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 8px; cursor: pointer;">
+                            <i class="fas fa-check-circle" style="color:#10b981"></i>
+                        </button>
+                    </div>
+                </div>`;
             if (filter === 'all' || filter === 'debt') (appData.debt_debt || []).forEach(d => cont.innerHTML += createCard(d, 'debt'));
             if (filter === 'all' || filter === 'credit') (appData.debt_credit || []).forEach(d => cont.innerHTML += createCard(d, 'credit'));
         }
@@ -724,7 +911,6 @@
             document.getElementById('newLogoInput').value = appData.customAppLogo || "💎";
             document.getElementById('editBrandModal').style.display = 'flex'; 
         }
-
         function closeEditBrandModal() { document.getElementById('editBrandModal').style.display = 'none'; }
         
         function saveBrand() { 
@@ -743,7 +929,6 @@
             linkElement.setAttribute('download', `backup.json`);
             linkElement.click();
         }
-
         function triggerRestore() { document.getElementById('restoreFile').click(); }
         function restoreData(event) {
             const file = event.target.files[0];
@@ -751,14 +936,12 @@
             reader.onload = function(e) { appData = JSON.parse(e.target.result); saveData(); location.reload(); };
             reader.readAsText(file);
         }
-
         function resetWeek() {
             if(confirm("هل أنت متأكد من تصفير الأسبوع؟ (يمكنك الأرشفة أولاً من الإعدادات)")) {
                 days.forEach((_, i) => { appData[`day_${i}`] = []; });
                 saveData();
             }
         }
-
         function updateAIAdvice() {
             let grandTotal = 0;
             days.forEach((_, i) => (appData[`day_${i}`] || []).forEach(item => grandTotal += item.price));
