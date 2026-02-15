@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مصاريفي Pro - النسخة المتطورة</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <title>مصاريفي Pro - النسخة المتكاملة</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -142,6 +142,32 @@
         .filter-container { display: flex; gap: 8px; margin-bottom: 15px; }
         .filter-btn { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-weight: bold; cursor: pointer; font-size: 13px; }
         .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        input[type="color"] {
+            height: 50px;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        .ai-card {
+            border-right: 5px solid var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        /* إخفاء مربع اختيار الملف تماماً لجمالية الواجهة */
+        #restoreFile {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0; width: 0;
+            position: absolute;
+        }
     </style>
 </head>
 <body>
@@ -191,6 +217,13 @@
                 </select>
                 <input type="text" id="itemName" placeholder="شنو اشتريت؟">
                 <input type="number" id="itemPrice" placeholder="السعر (د.ع)">
+                <select id="itemCategory">
+                    <option value="عام 📦">عام 📦</option>
+                    <option value="طعام 🍕">طعام 🍕</option>
+                    <option value="تسوق 🛍️">تسوق 🛍️</option>
+                    <option value="نقل 🚕">نقل 🚕</option>
+                    <option value="فواتير 📑">فواتير 📑</option>
+                </select>
                 <button class="btn" onclick="addItem()">إضافة للمصاريف ➕</button>
             </div>
             <div id="dailyLists"></div>
@@ -245,9 +278,16 @@
         <div id="reports" class="section">
             <div class="card" style="height: 300px;"> <canvas id="expenseChart"></canvas>
             </div>
+            
+            <div class="card ai-card">
+                <h3>مساعد التوفير الذكي ✨</h3>
+                <p id="aiAdvice" style="font-size: 14px; line-height: 1.6; opacity: 0.9;">سجل مصاريفك لعرض التحليل...</p>
+            </div>
+
             <div class="card">
                 <h3>ميزانية الأسبوع</h3>
-                <input type="number" id="budgetLimit" placeholder="حدد ميزانيتك" onchange="updateUI()">
+                <input type="number" id="budgetLimit" placeholder="حدد ميزانيتك" onchange="saveBudgetLimit(this.value)">
+                <button class="btn" style="margin-top:10px; background: #ffffff; color: var(--primary); border: 2px solid var(--primary);" onclick="downloadPDF()">تحميل تقرير PDF <i class="fas fa-file-pdf"></i></button>
             </div>
         </div>
 
@@ -255,7 +295,13 @@
             <div class="card">
                 <button class="btn" onclick="toggleDarkMode()">الوضع الليلي 🌙</button>
                 <button class="btn" onclick="openEditBrandModal()" style="margin-top:10px;">تخصيص الهوية 🎨</button>
-                <button class="btn" onclick="exportAsImage()" style="margin-top:10px; background:#4b5563;">حفظ كصورة 📸</button>
+                
+                <div class="settings-grid">
+                    <button class="btn" onclick="backupData()" style="background:#0891b2;">نسخة احتياطية 💾</button>
+                    <button class="btn" onclick="triggerRestore()" style="background:#4f46e5;">استرجاع نسخة 📂</button>
+                </div>
+                <input type="file" id="restoreFile" accept=".json" onchange="restoreData(event)">
+
                 <button class="btn btn-danger" onclick="resetWeek()" style="margin-top:10px;">تصفير الأسبوع ♻️</button>
                 <hr>
                 <button class="btn" onclick="logout()" style="background: #1e293b;">تسجيل خروج ⬅️</button>
@@ -264,19 +310,31 @@
     </div>
 
     <div id="editBrandModal" class="lock-screen" style="display:none; background: rgba(0,0,0,0.9);">
-        <div class="card" style="width: 90%; max-width: 400px;">
-            <h3>تخصيص البرنامج</h3>
+        <div class="card" style="width: 90%; max-width: 400px; color: var(--text);">
+            <h3 style="margin-top: 0;">تخصيص البرنامج</h3>
+            <p style="font-size: 14px; opacity: 0.8;">اسم البرنامج:</p>
             <input type="text" id="newNameInput" placeholder="اسم البرنامج">
-            <input type="text" id="newLogoInput" placeholder="الأيقونة (Emoji)">
-            <label>لون الأساس:</label><input type="color" id="color1" value="#6366f1">
-            <label>لون التدرج:</label><input type="color" id="color2" value="#8b5cf6">
-            <button class="btn" onclick="saveBrand()">حفظ التعديلات</button>
-            <button class="btn btn-danger" onclick="closeEditBrandModal()" style="margin-top:10px;">إلغاء</button>
+            <p style="font-size: 14px; opacity: 0.8;">الأيقونة (Emoji):</p>
+            <input type="text" id="newLogoInput" placeholder="الأيقونة">
+            
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <div style="flex: 1;">
+                    <p style="font-size: 12px;">اللون الأساسي:</p>
+                    <input type="color" id="color1">
+                </div>
+                <div style="flex: 1;">
+                    <p style="font-size: 12px;">لون التدرج:</p>
+                    <input type="color" id="color2">
+                </div>
+            </div>
+            
+            <button class="btn" onclick="saveBrand()">حفظ التعديلات ✅</button>
+            <button class="btn btn-danger" onclick="closeEditBrandModal()" style="margin-top:10px;">إلغاء ✕</button>
         </div>
     </div>
 
     <script>
-        // تكوين Firebase (استخدم نفس مفاتيحك)
+        // إعدادات Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyA3pSsj-_9WoyczR42zFV_bpCUXddnatEw",
             authDomain: "mywallety-c8309.firebaseapp.com",
@@ -294,7 +352,7 @@
         let chart = null;
         const days = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
 
-        // --- وظائف الهوية والتوثيق ---
+        // دوال المصادقة
         function handleAuth(type) {
             const email = document.getElementById('userInput').value;
             const password = document.getElementById('pinInput').value;
@@ -307,7 +365,7 @@
             if (user) {
                 currentUser = user;
                 db.ref('users/' + user.uid).on('value', snap => {
-                    appData = snap.val() || { vault: 0, vaultLogs: [], installments: [], debt_debt: [], debt_credit: [] };
+                    appData = snap.val() || { vault: 0, vaultLogs: [], installments: [], debt_debt: [], debt_credit: [], budgetLimit: 0 };
                     initApp();
                 });
             } else {
@@ -322,38 +380,35 @@
             document.querySelector('.app-container').style.display = 'block';
             document.getElementById('mainTaskbar').style.display = 'flex';
             if (appData.theme === 'dark') document.body.classList.add('dark-mode');
-            if (appData.userC1) {
+            if (appData.userC1 && appData.userC2) {
                 document.documentElement.style.setProperty('--primary', appData.userC1);
                 document.documentElement.style.setProperty('--secondary', appData.userC2);
             }
             document.getElementById('appNameDisplay').innerText = appData.customAppName || "مصاريفي Pro";
             document.getElementById('appLogo').innerText = appData.customAppLogo || "💎";
+            document.getElementById('budgetLimit').value = appData.budgetLimit || "";
             updateUI();
         }
 
-        // --- التبديل بين التبويبات ---
         function switchTab(tabId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             const btns = document.querySelectorAll('.tab-btn');
-            btns.forEach(b => {
-                if(b.getAttribute('onclick').includes(`'${tabId}'`)) b.classList.add('active');
-            });
-            if(tabId === 'reports') renderChart(); // إعادة رسم البياني عند فتح التبويب لضمان دقة الأبعاد
+            btns.forEach(b => { if(b.getAttribute('onclick').includes(`'${tabId}'`)) b.classList.add('active'); });
+            if(tabId === 'reports') { renderChart(); updateAIAdvice(); }
         }
 
-        // --- تحديث واجهة المستخدم العامة ---
+        function saveBudgetLimit(val) { appData.budgetLimit = parseInt(val) || 0; saveData(); }
+
         function updateUI() {
             let weeklyTotal = 0;
             const container = document.getElementById('dailyLists');
             container.innerHTML = '';
-
             days.forEach((day, i) => {
                 const items = appData[`day_${i}`] || [];
                 const dayTotal = items.reduce((sum, item) => sum + item.price, 0);
                 weeklyTotal += dayTotal;
-
                 if (items.length > 0) {
                     const dayCard = document.createElement('div');
                     dayCard.className = 'day-card animate__animated animate__fadeIn';
@@ -366,145 +421,113 @@
                             </div>
                         </div>
                         <div class="items-container">
-                            ${items.map(item => `
-                                <div class="item-row">
-                                    <span>${item.name}</span>
-                                    <span>
-                                        <b>${item.price.toLocaleString()}</b>
-                                        <button onclick="deleteItem(${i}, ${item.id})" style="background:none; border:none; color:red; margin-right:8px; cursor:pointer;">✕</button>
-                                    </span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
+                            ${items.map(item => `<div class="item-row"><span>${item.name} <small style="opacity:0.6; font-size:10px;">(${item.category || 'عام'})</small></span><span><b>${item.price.toLocaleString()}</b><button onclick="deleteItem(${i}, ${item.id})" style="background:none; border:none; color:red; margin-right:8px; cursor:pointer;">✕</button></span></div>`).join('')}
+                        </div>`;
                     container.appendChild(dayCard);
                 }
             });
-
             document.getElementById('totalDisplay').innerText = weeklyTotal.toLocaleString() + ' د.ع';
             document.getElementById('vaultDisplay').innerText = (appData.vault || 0).toLocaleString() + ' د.ع';
-            
-            const limit = parseInt(document.getElementById('budgetLimit').value) || 0;
+            const limit = appData.budgetLimit || 0;
             const status = document.getElementById('budgetStatus');
             if (limit > 0) {
                 const diff = limit - weeklyTotal;
                 status.innerText = diff >= 0 ? `باقي: ${diff.toLocaleString()} د.ع` : `تجاوزت بـ: ${Math.abs(diff).toLocaleString()} د.ع`;
                 status.style.color = diff >= 0 ? '#10b981' : '#ef4444';
-            }
-            renderChart(); 
-            renderInstallments(); 
-            renderDebts();
-            renderVaultHistory();
+            } else { status.innerText = "لم يتم تحديد ميزانية بعد"; status.style.color = "gray"; }
+            renderChart(); renderInstallments(); renderDebts(); renderVaultHistory();
         }
 
-        // --- وظيفة الرسم البياني المحسنة ---
+        // دالة التحميل المصلحة بالكامل
+        function downloadPDF() {
+            const element = document.getElementById('captureArea');
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = "جاري التحضير... <i class='fas fa-spinner fa-spin'></i>";
+            btn.disabled = true;
+
+            // خيارات التحميل المتوافقة مع الموبايل
+            const opt = {
+                margin: 0.2,
+                filename: `تقرير_مصاريفي_${new Date().toLocaleDateString('ar-EG')}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2, 
+                    useCORS: true, 
+                    letterRendering: true,
+                    scrollY: 0
+                },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            // إخفاء الأزرار مؤقتاً لجمالية التقرير
+            const componentsToHide = document.querySelectorAll('.btn, .tab-btn, .settings-icon, input, select');
+            componentsToHide.forEach(el => el.style.visibility = 'hidden');
+
+            // تنفيذ التحميل مع تأخير بسيط لضمان المعالجة
+            setTimeout(() => {
+                html2pdf().set(opt).from(element).save().then(() => {
+                    componentsToHide.forEach(el => el.style.visibility = 'visible');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }).catch(err => {
+                    alert("عذراً، حدث خطأ أثناء التحميل. يرجى المحاولة مرة أخرى.");
+                    componentsToHide.forEach(el => el.style.visibility = 'visible');
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+            }, 800);
+        }
+
+        // بقية الدوال البرمجية (Chart, Vault, Debt, Settings, etc.)
         function renderChart() {
             const ctx = document.getElementById('expenseChart');
             if (!ctx) return;
-
             const isDark = document.body.classList.contains('dark-mode');
             const textColor = isDark ? '#f8fafc' : '#1e293b';
-            const gridColor = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
             const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#6366f1';
-
             const dataValues = days.map((_, i) => (appData[`day_${i}`] || []).reduce((sum, item) => sum + item.price, 0));
-
             if (chart) chart.destroy();
-
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: days,
-                    datasets: [{
-                        label: 'المصاريف اليومية',
-                        data: dataValues,
-                        borderColor: primaryColor,
-                        backgroundColor: primaryColor + '20', // إضافة شفافية للخلفية
-                        borderWidth: 3,
-                        tension: 0.4, // لجعل الخط منحني وانسيابي
-                        fill: true,
-                        pointBackgroundColor: primaryColor,
-                        pointRadius: 5
-                    }]
+                    datasets: [{ label: 'المصاريف اليومية', data: dataValues, borderColor: primaryColor, backgroundColor: primaryColor + '20', borderWidth: 3, tension: 0.4, fill: true }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: { color: textColor, font: { family: 'Tajawal', size: 12 } }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: { color: gridColor },
-                            ticks: { 
-                                color: textColor, 
-                                font: { family: 'Tajawal' },
-                                callback: function(value) { return value.toLocaleString(); }
-                            }
-                        },
-                        x: {
-                            grid: { display: false },
-                            ticks: { color: textColor, font: { family: 'Tajawal' } }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: textColor, font: { family: 'Tajawal' } } } }, scales: { y: { ticks: { color: textColor } }, x: { ticks: { color: textColor } } } }
             });
         }
 
-        // --- باقي وظائف البرنامج (الخزنة، الديون، إلخ) ---
         function updateVault(isAdd) {
             const amt = parseInt(document.getElementById('vaultAmount').value);
             if (!amt || amt <= 0) return;
             appData.vault = (appData.vault || 0) + (isAdd ? amt : -amt);
             if (!appData.vaultLogs) appData.vaultLogs = [];
-            appData.vaultLogs.unshift({
-                id: Date.now(),
-                type: isAdd ? 'إضافة' : 'سحب',
-                amount: amt,
-                date: new Date().toLocaleString('ar-EG', {hour:'2-digit', minute:'2-digit'}),
-                isAdd: isAdd
-            });
+            appData.vaultLogs.unshift({ id: Date.now(), type: isAdd ? 'إضافة' : 'سحب', amount: amt, date: new Date().toLocaleString('ar-EG', {hour:'2-digit', minute:'2-digit'}), isAdd: isAdd });
             document.getElementById('vaultAmount').value = '';
             saveData();
         }
 
         function renderVaultHistory() {
             const histCont = document.getElementById('vaultHistory');
-            if (!appData.vaultLogs || appData.vaultLogs.length === 0) {
-                histCont.innerHTML = '<p style="text-align:center; opacity:0.5; padding:20px;">لا توجد حركات سابقة</p>';
-                return;
-            }
-            histCont.innerHTML = appData.vaultLogs.map(log => `
-                <div class="item-row" style="border-right: 4px solid ${log.isAdd ? '#10b981' : '#ef4444'};">
-                    <div style="display:flex; flex-direction:column; align-items:start;">
-                        <span style="font-weight:bold;">${log.type}</span>
-                        <small style="opacity:0.6; font-size:11px;">${log.date}</small>
-                    </div>
-                    <b style="color:${log.isAdd ? '#10b981' : '#ef4444'}">${log.isAdd ? '+' : '-'}${log.amount.toLocaleString()}</b>
-                </div>
-            `).join('');
+            if (!appData.vaultLogs || appData.vaultLogs.length === 0) { histCont.innerHTML = '<p style="text-align:center; opacity:0.5; padding:20px;">لا توجد حركات سابقة</p>'; return; }
+            histCont.innerHTML = appData.vaultLogs.map(log => `<div class="item-row" style="border-right: 4px solid ${log.isAdd ? '#10b981' : '#ef4444'};"><div style="display:flex; flex-direction:column; align-items:start;"><span style="font-weight:bold;">${log.type}</span><small style="opacity:0.6; font-size:11px;">${log.date}</small></div><b style="color:${log.isAdd ? '#10b981' : '#ef4444'}">${log.isAdd ? '+' : '-'}${log.amount.toLocaleString()}</b></div>`).join('');
         }
 
         function addItem() {
             const dayIdx = document.getElementById('daySelect').value;
             const name = document.getElementById('itemName').value;
             const price = parseInt(document.getElementById('itemPrice').value);
+            const category = document.getElementById('itemCategory').value;
             if (!name || !price) return;
             if (!appData[`day_${dayIdx}`]) appData[`day_${dayIdx}`] = [];
-            appData[`day_${dayIdx}`].push({ name, price, id: Date.now() });
+            appData[`day_${dayIdx}`].push({ name, price, category, id: Date.now() });
             saveData();
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemPrice').value = '';
+            document.getElementById('itemName').value = ''; document.getElementById('itemPrice').value = '';
         }
 
-        function deleteItem(dayIdx, id) {
-            appData[`day_${dayIdx}`] = appData[`day_${dayIdx}`].filter(item => item.id !== id);
-            saveData();
-        }
+        function deleteItem(dayIdx, id) { appData[`day_${dayIdx}`] = appData[`day_${dayIdx}`].filter(item => item.id !== id); saveData(); }
 
         function addInstallment() {
             const name = document.getElementById('instName').value;
@@ -514,9 +537,7 @@
             if (!appData.installments) appData.installments = [];
             appData.installments.push({ name, total, monthly, paid: 0, id: Date.now() });
             saveData();
-            document.getElementById('instName').value = '';
-            document.getElementById('instTotal').value = '';
-            document.getElementById('instMonthly').value = '';
+            document.getElementById('instName').value = ''; document.getElementById('instTotal').value = ''; document.getElementById('instMonthly').value = '';
         }
 
         function payInstallment(id) {
@@ -524,35 +545,13 @@
             if (inst) { inst.paid = Math.min(inst.total, inst.paid + inst.monthly); saveData(); }
         }
 
-        function deleteInstallment(id) {
-            if(confirm("حذف هذا القسط؟")) {
-                appData.installments = appData.installments.filter(i => i.id !== id);
-                saveData();
-            }
-        }
+        function deleteInstallment(id) { if(confirm("حذف هذا القسط؟")) { appData.installments = appData.installments.filter(i => i.id !== id); saveData(); } }
 
         function renderInstallments() {
-            const cont = document.getElementById('instList');
-            cont.innerHTML = '';
+            const cont = document.getElementById('instList'); cont.innerHTML = '';
             (appData.installments || []).forEach(inst => {
                 const perc = (inst.paid / inst.total) * 100;
-                cont.innerHTML += `
-                    <div class="card">
-                        <div style="display:flex; justify-content:space-between;">
-                            <b>${inst.name}</b>
-                            <button onclick="deleteInstallment(${inst.id})" style="background:none; border:none; color:red; cursor:pointer;">✕</button>
-                        </div>
-                        <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${perc}%"></div></div>
-                        <div style="display:flex; justify-content:space-between; font-size:13px;">
-                            <span>المدفوع: ${inst.paid.toLocaleString()}</span>
-                            <span>الكلي: ${inst.total.toLocaleString()}</span>
-                        </div>
-                        <button class="btn btn-success" style="margin-top:10px; padding:8px; font-size:14px;" 
-                                ${inst.paid >= inst.total ? 'disabled' : ''} 
-                                onclick="payInstallment(${inst.id})">
-                            ${inst.paid >= inst.total ? 'تم التسديد ✅' : 'دفع القسط الشهري 💸'}
-                        </button>
-                    </div>`;
+                cont.innerHTML += `<div class="card"><div style="display:flex; justify-content:space-between;"><b>${inst.name}</b><button onclick="deleteInstallment(${inst.id})" style="background:none; border:none; color:red; cursor:pointer;">✕</button></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${perc}%"></div></div><div style="display:flex; justify-content:space-between; font-size:13px;"><span>المدفوع: ${inst.paid.toLocaleString()}</span><span>الكلي: ${inst.total.toLocaleString()}</span></div><button class="btn btn-success" style="margin-top:10px; padding:8px; font-size:14px;" ${inst.paid >= inst.total ? 'disabled' : ''} onclick="payInstallment(${inst.id})">${inst.paid >= inst.total ? 'تم التسديد ✅' : 'دفع القسط الشهري 💸'}</button></div>`;
             });
         }
 
@@ -564,109 +563,71 @@
             if (!appData[`debt_${type}`]) appData[`debt_${type}`] = [];
             appData[`debt_${type}`].push({ person, amount: amt, id: Date.now() });
             saveData();
-            document.getElementById('debtPerson').value = '';
-            document.getElementById('debtAmount').value = '';
+            document.getElementById('debtPerson').value = ''; document.getElementById('debtAmount').value = '';
         }
 
-        function deleteDebt(type, id) {
-            appData[`debt_${type}`] = appData[`debt_${type}`].filter(d => d.id !== id);
-            saveData();
-        }
+        function deleteDebt(type, id) { appData[`debt_${type}`] = appData[`debt_${type}`].filter(d => d.id !== id); saveData(); }
 
         function renderDebts(filter = 'all') {
-            const cont = document.getElementById('debtLists');
-            cont.innerHTML = '';
+            const cont = document.getElementById('debtLists'); cont.innerHTML = '';
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             if(filter === 'all') document.getElementById('btnFilterAll').classList.add('active');
-            if(filter === 'debt') document.getElementById('btnFilterDebt').classList.add('active');
-            if(filter === 'credit') document.getElementById('btnFilterCredit').classList.add('active');
-
-            const createCard = (d, type) => {
-                const isDebt = type === 'debt';
-                return `
-                    <div class="item-row" style="border-right: 5px solid ${isDebt ? '#ef4444' : '#10b981'};">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="background: ${isDebt ? '#fee2e2' : '#dcfce7'}; color: ${isDebt ? '#ef4444' : '#10b981'}; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                                <i class="fas ${isDebt ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
-                            </div>
-                            <div style="display: flex; flex-direction: column;">
-                                <span style="font-weight: 800;">${d.person}</span>
-                                <small style="opacity: 0.6;">${isDebt ? 'مطلوب لي' : 'أطلب منه'}</small>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <b style="color: ${isDebt ? '#ef4444' : '#10b981'};">${d.amount.toLocaleString()}</b>
-                            <button onclick="deleteDebt('${type}', ${d.id})" style="background: #f1f5f9; border: none; color: #ef4444; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                    </div>`;
-            };
-
+            const createCard = (d, type) => `<div class="item-row" style="border-right: 5px solid ${type === 'debt' ? '#ef4444' : '#10b981'};"><div style="display: flex; align-items: center; gap: 12px;"><div style="background: ${type === 'debt' ? '#fee2e2' : '#dcfce7'}; color: ${type === 'debt' ? '#ef4444' : '#10b981'}; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center;"><i class="fas ${type === 'debt' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i></div><div style="display: flex; flex-direction: column;"><span style="font-weight: 800;">${d.person}</span><small style="opacity: 0.6;">${type === 'debt' ? 'مطلوب لي' : 'أطلب منه'}</small></div></div><div style="display: flex; align-items: center; gap: 15px;"><b>${d.amount.toLocaleString()}</b><button onclick="deleteDebt('${type}', ${d.id})" style="background: #f1f5f9; border: none; color: #ef4444; width: 28px; height: 28px; border-radius: 8px; cursor: pointer;"><i class="fas fa-trash-alt"></i></button></div></div>`;
             if (filter === 'all' || filter === 'debt') (appData.debt_debt || []).forEach(d => cont.innerHTML += createCard(d, 'debt'));
             if (filter === 'all' || filter === 'credit') (appData.debt_credit || []).forEach(d => cont.innerHTML += createCard(d, 'credit'));
-            if(cont.innerHTML === '') cont.innerHTML = '<p style="text-align:center; opacity:0.5;">لا توجد سجلات</p>';
         }
 
         function saveData() {
             if (!currentUser) return;
-            const status = document.getElementById('cloudStatus');
-            const text = document.getElementById('cloudText');
-            status.style.color = '#f59e0b';
-            text.innerText = "جاري الحفظ...";
-            db.ref('users/' + currentUser.uid).set(appData).then(() => {
-                status.style.color = '#10b981';
-                text.innerText = "متصل";
-                updateUI();
-            });
+            db.ref('users/' + currentUser.uid).set(appData).then(() => { updateUI(); });
         }
 
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            appData.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-            saveData();
-            setTimeout(() => renderChart(), 300); // تحديث ألوان الرسم البياني بعد تغيير الوضع
-        }
+        function toggleDarkMode() { document.body.classList.toggle('dark-mode'); appData.theme = document.body.classList.contains('dark-mode') ? 'dark' : 'light'; saveData(); }
 
-        function toggleDay(header) {
-            const container = header.nextElementSibling;
-            const icon = header.querySelector('.fa-chevron-down');
-            container.classList.toggle('open');
-            icon.style.transform = container.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
+        function toggleDay(header) { const container = header.nextElementSibling; container.classList.toggle('open'); }
 
-        function toggleVaultHistory() {
-            const container = document.getElementById('vaultHistoryContainer');
-            const icon = document.getElementById('vaultArrow');
-            container.classList.toggle('open');
-            icon.style.transform = container.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
+        function toggleVaultHistory() { const container = document.getElementById('vaultHistoryContainer'); container.classList.toggle('open'); }
 
         function logout() { auth.signOut().then(() => location.reload()); }
-        function openEditBrandModal() { document.getElementById('editBrandModal').style.display = 'flex'; }
+
+        function openEditBrandModal() { 
+            document.getElementById('newNameInput').value = appData.customAppName || "مصاريفي Pro";
+            document.getElementById('newLogoInput').value = appData.customAppLogo || "💎";
+            document.getElementById('editBrandModal').style.display = 'flex'; 
+        }
+
         function closeEditBrandModal() { document.getElementById('editBrandModal').style.display = 'none'; }
         
         function saveBrand() { 
-            appData.customAppName = document.getElementById('newNameInput').value || "مصاريفي Pro"; 
-            appData.customAppLogo = document.getElementById('newLogoInput').value || "💎"; 
+            appData.customAppName = document.getElementById('newNameInput').value; 
+            appData.customAppLogo = document.getElementById('newLogoInput').value; 
             appData.userC1 = document.getElementById('color1').value;
             appData.userC2 = document.getElementById('color2').value;
-            saveData(); 
-            setTimeout(() => location.reload(), 500);
+            saveData(); closeEditBrandModal();
         }
 
-        function resetWeek() { 
-            if(confirm("هل أنت متأكد من تصفير الأسبوع؟ (سيتم حذف مصاريف الأيام فقط)")) { 
-                days.forEach((_, i) => delete appData[`day_${i}`]); 
-                saveData(); 
-            } 
+        function backupData() {
+            const dataStr = JSON.stringify(appData);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', `backup.json`);
+            linkElement.click();
         }
 
-        function exportAsImage() {
-            html2canvas(document.querySelector("#captureArea")).then(canvas => {
-                const link = document.createElement('a');
-                link.download = 'تقرير_مصاريفي.png';
-                link.href = canvas.toDataURL(); 
-                link.click();
-            });
+        function triggerRestore() { document.getElementById('restoreFile').click(); }
+
+        function restoreData(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) { appData = JSON.parse(e.target.result); saveData(); location.reload(); };
+            reader.readAsText(file);
+        }
+
+        function updateAIAdvice() {
+            let grandTotal = 0;
+            days.forEach((_, i) => (appData[`day_${i}`] || []).forEach(item => grandTotal += item.price));
+            document.getElementById('aiAdvice').innerText = grandTotal > 0 ? `مجموع ما صرفته هذا الأسبوع هو ${grandTotal.toLocaleString()} د.ع. استمر في المراقبة!` : "سجل مصاريفك لعرض التحليل...";
         }
     </script>
 </body>
